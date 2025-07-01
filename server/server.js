@@ -51,9 +51,9 @@ let serialPort;
 let parser;
 
 // Function to initialize serial connection
-function initializeSerial(portPath = 'COM6', baudRate = 9600) {
+function initializeSerial(portPath = 'COM4', baudRate = 9600) {
   try {
-    serialPort = new SerialPort({
+    serialPort = new SerialPort({   
       path: portPath,
       baudRate: baudRate,
     });
@@ -232,8 +232,8 @@ app.listen(PORT, () => {
   console.log(`🔌 WebSocket server running on ws://localhost:8080`);
   
   // Try to initialize serial connection with default port
-  console.log('🔍 Attempting to connect to Arduino on COM3...');
-  initializeSerial('COM6', 9600);
+  console.log('🔍 Attempting to connect to Arduino on COM4...');
+  initializeSerial('COM4', 9600);
 });
 
 // Graceful shutdown
