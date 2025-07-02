@@ -51,7 +51,7 @@ let serialPort;
 let parser;
 
 // Function to initialize serial connection
-function initializeSerial(portPath = 'COM4', baudRate = 9600) {
+function initializeSerial(portPath = '/dev/cu.usbmodem1201', baudRate = 9600) {
   try {
     serialPort = new SerialPort({   
       path: portPath,
