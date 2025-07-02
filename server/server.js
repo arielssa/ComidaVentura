@@ -231,9 +231,9 @@ app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`🔌 WebSocket server running on ws://localhost:8080`);
   
-  // Try to initialize serial connection with default port
-  console.log('🔍 Attempting to connect to Arduino on COM4...');
-  initializeSerial('COM4', 9600);
+  // Try to initialize serial connection with default port (macOS)
+  console.log('🔍 Attempting to connect to Arduino on /dev/cu.usbmodem1201...');
+  initializeSerial('/dev/cu.usbmodem1201', 9600);
 });
 
 // Graceful shutdown

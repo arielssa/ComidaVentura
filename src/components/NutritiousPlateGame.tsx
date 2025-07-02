@@ -24,82 +24,165 @@ const plateSections = [
 
 const foxFaces = {
   normal: '🦊',
-  happy: '😃🦊',
-  celebrate: '🎉🦊',
-  encourage: '🤩🦊',
-  wrong: '😮🦊',
+  happy: '😄🦊',
+  celebrate: '🎉🦊✨',
+  encourage: '🌟🦊',
+  wrong: '😅🦊',
+  thinking: '🤔🦊',
+  excited: '🤩🦊',
 };
 
 const motivationalMessages = [
-  '¡Sigue así! Vas muy bien.',
-  '¡Solo falta un ingrediente!',
-  '¡Eres un chef saludable!',
-  '¡Qué plato tan colorido!',
-  '¡Excelente elección!',
+  '¡Excelente! ¡Sigue construyendo tu plato saludable! 🌟',
+  '¡Solo falta un ingrediente más! ¡Ya casi terminas! 🎯',
+  '¡Eres un chef súper saludable! ¡Me encanta tu plato! 👨‍🍳',
+  '¡Qué plato tan colorido y nutritivo! ¡Perfecto! 🌈',
+  '¡Fantástica elección! ¡Ese ingrediente es súper nutritivo! ✨',
+  '¡Increíble! ¡Tu plato se ve delicioso y saludable! 🍽️',
+];
+
+const celebrationMessages = [
+  '¡INCREÍBLE! ¡Completaste una receta súper nutritiva! 🎊',
+  '¡BRAVO! ¡Eres el mejor chef saludable del mundo! 🏆',
+  '¡FANTÁSTICO! ¡Tu plato está perfecto y delicioso! ⭐',
+  '¡GENIAL! ¡Has creado una comida súper balanceada! 🎉',
 ];
 
 const ecuadorianRecipes: EcuadorianRecipe[] = [
   {
-    name: 'Seco de Pollo',
+    name: 'Seco de Pollo 🍗',
     ingredients: ['chicken', 'carrots', 'rice', 'banana'],
   },
   {
-    name: 'Encebollado',
+    name: 'Encebollado 🐟',
     ingredients: ['fish', 'onion', 'banana'],
   },
   {
-    name: 'Bolón de Verde',
+    name: 'Bolón de Verde 🍌',
     ingredients: ['banana', 'cheese'],
   },
   {
-    name: 'Arroz con Pollo',
+    name: 'Arroz con Pollo 🍚',
     ingredients: ['chicken', 'rice', 'carrots', 'peas'],
   },
   {
-    name: 'Yogur con Frutas',
+    name: 'Yogur con Frutas 🥛',
     ingredients: ['yogurt', 'banana', 'apple', 'berries'],
   },
 ];
 
-function getFoxState(placedCount: number, total: number, completed: boolean, wrong: boolean) {
+// Enhanced Fox Character Component
+const FoxCharacter: React.FC<{ state: string; message: string; isAnimating: boolean }> = ({ state, message, isAnimating }) => {
+  const [currentMessage, setCurrentMessage] = useState(message);
+  const [isTyping, setIsTyping] = useState(false);
+
+  useEffect(() => {
+    if (message !== currentMessage) {
+      setIsTyping(true);
+      setTimeout(() => {
+        setCurrentMessage(message);
+        setIsTyping(false);
+      }, 300);
+    }
+  }, [message, currentMessage]);
+
+  return (
+    <div className="guide-character">
+      <span 
+        className={`fox-face${state === 'celebrate' ? ' celebrate' : ''}${state === 'wrong' ? ' wrong' : ''}${isAnimating ? ' bouncing' : ''}`} 
+        role="img" 
+        aria-label="Guía Nutricional"
+      >
+        {foxFaces[state as keyof typeof foxFaces]}
+      </span>
+      <div className={`guide-text ${isTyping ? 'typing' : ''}`}>
+        {isTyping ? 'Pensando...' : currentMessage}
+      </div>
+    </div>
+  );
+};
+
+// Particle Effect Component
+const ParticleEffect: React.FC<{ isActive: boolean; type: 'celebration' | 'sparkle' }> = ({ isActive, type }) => {
+  const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; delay: number }>>([]);
+
+  useEffect(() => {
+    if (isActive) {
+      const newParticles = Array.from({ length: type === 'celebration' ? 20 : 10 }, (_, i) => ({
+        id: i,
+        x: Math.random() * 100,
+        y: Math.random() * 100,
+        delay: Math.random() * 1000,
+      }));
+      setParticles(newParticles);
+
+      const timer = setTimeout(() => {
+        setParticles([]);
+      }, 3000);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isActive, type]);
+
+  if (!isActive || particles.length === 0) return null;
+
+  return (
+    <div className="particle-container">
+      {particles.map((particle) => (
+        <div
+          key={particle.id}
+          className={`particle ${type}`}
+          style={{
+            left: `${particle.x}%`,
+            top: `${particle.y}%`,
+            animationDelay: `${particle.delay}ms`,
+          }}
+        >
+          {type === 'celebration' ? '🎊' : '✨'}
+        </div>
+      ))}
+    </div>
+  );
+};
+
+function getFoxState(placedCount: number, total: number, completed: boolean, wrong: boolean, isThinking: boolean = false) {
   if (wrong) return 'wrong';
   if (completed) return 'celebrate';
+  if (isThinking) return 'thinking';
   if (placedCount === total - 1) return 'encourage';
   if (placedCount > 0) return 'happy';
   return 'normal';
 }
 
 function getMotivationalMessage(placedCount: number, total: number, completed: boolean, wrong: boolean) {
-  if (wrong) return '¡Ese ingrediente no es parte de la receta!';
-  if (completed) return '¡Felicidades! ¡Completaste la receta!';
+  if (wrong) return '¡Oops! Ese ingrediente no es parte de esta receta. ¡Intenta con otro! 😊';
+  if (completed) return celebrationMessages[Math.floor(Math.random() * celebrationMessages.length)];
   if (placedCount === total - 1) return motivationalMessages[1];
   if (placedCount > 0) return motivationalMessages[Math.floor(Math.random() * (motivationalMessages.length - 2)) + 2];
-  return 'Escanea los ingredientes con NFC para completar la receta.';
+  return 'Escanea los ingredientes con NFC para completar la receta. ¡Vamos a crear algo delicioso! 🍽️';
 }
 
 const addSoundUrl = 'https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2.mp3';
 const winSoundUrl = 'https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2.mp3';
-const wrongSoundUrl = 'https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2.mp3'; // Cambia por un sonido negativo real
+const wrongSoundUrl = 'https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2.mp3';
 
-const GEMINI_API_KEY = 'AIzaSyCLbIaIKobsQWdCMFFnrTScXbIqeeRg4Lk'; // <-- Reemplaza por tu API Key
+const GEMINI_API_KEY = 'AIzaSyCLbIaIKobsQWdCMFFnrTScXbIqeeRg4Lk';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
-const getAvailableRecipes = (foods: Food[]): EcuadorianRecipe[] => {
-  const availableIds = foods.map(f => f.id);
-  return ecuadorianRecipes.filter(recipe =>
-    recipe.ingredients.every(ing => availableIds.includes(ing))
-  );
-};
+
 
 const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingredientes }) => {
   const { resetDish } = useArduino();
   // --- Modo de juego ---
   const [mode, setMode] = useState<'creativo' | 'tradicional'>('creativo');
   const [selectedRecipe, setSelectedRecipe] = useState<EcuadorianRecipe | null>(null);
-  const [tradicionalPlaced, setTradicionalPlaced] = useState<string[]>([]); // ids
+  const [tradicionalPlaced, setTradicionalPlaced] = useState<string[]>([]);
   const [wrongIngredient, setWrongIngredient] = useState<string | null>(null);
   const [loadingRecipe, setLoadingRecipe] = useState(false);
   const [recipeError, setRecipeError] = useState<string | null>(null);
+  const [isThinking, setIsThinking] = useState(false);
+  const [showCelebration, setShowCelebration] = useState(false);
+  const [showSparkles, setShowSparkles] = useState(false);
 
   // --- Sonidos ---
   const addSound = useRef<HTMLAudioElement | null>(null);
@@ -107,16 +190,33 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
   const wrongSound = useRef<HTMLAudioElement | null>(null);
   const prevPlacedCount = useRef(0);
 
+  // Initialize sounds
+  useEffect(() => {
+    addSound.current = new Audio(addSoundUrl);
+    winSound.current = new Audio(winSoundUrl);
+    wrongSound.current = new Audio(wrongSoundUrl);
+    
+    // Set volume and prepare sounds
+    [addSound.current, winSound.current, wrongSound.current].forEach(sound => {
+      if (sound) {
+        sound.volume = 0.3;
+        sound.preload = 'auto';
+      }
+    });
+  }, []);
+
   // --- Tradicional: pedir receta dinámica a la IA ---
   const fetchTraditionalRecipe = async () => {
     setLoadingRecipe(true);
+    setIsThinking(true);
     setRecipeError(null);
     setSelectedRecipe(null);
     setTradicionalPlaced([]);
     setWrongIngredient(null);
-    // Usar los ingredientes disponibles en foods
+    
     const availableNames = foods.map(f => f.name).join(', ');
     const prompt = `Dame una receta típica ecuatoriana (o si no es posible, una receta saludable) usando solo estos ingredientes: ${availableNames}. Responde SOLO con el nombre del plato en la primera línea y luego una lista de ingredientes (uno por línea, solo el nombre del ingrediente, sin cantidades ni explicaciones).`;
+    
     try {
       const response = await fetch(GEMINI_API_URL, {
         method: 'POST',
@@ -129,21 +229,24 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
       });
       const data = await response.json();
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-      // Parsear nombre y lista de ingredientes
+      
       const lines = text.split('\n').map((l: string) => l.trim()).filter(Boolean);
       if (lines.length < 2) throw new Error('Respuesta inesperada de la IA');
+      
       const name = lines[0];
-      // Buscar los foods que coincidan con los nombres devueltos
       const ingredientFoods: Food[] = lines.slice(1).map((line: string) => {
-        // Buscar por nombre exacto o similar
         return foods.find(f => f.name.toLowerCase() === line.toLowerCase() || f.name.toLowerCase().includes(line.toLowerCase()));
       }).filter(Boolean) as Food[];
+      
       if (ingredientFoods.length < 2) throw new Error('No se encontraron suficientes ingredientes válidos');
+      
       setSelectedRecipe({ name, ingredients: ingredientFoods.map(f => f.id) });
-    } catch (err) {
-      setRecipeError('No se pudo obtener una receta. Intenta de nuevo.');
+      setShowSparkles(true);
+    } catch (_err) {
+      setRecipeError('No se pudo obtener una receta. ¡Intenta de nuevo! 🔄');
     } finally {
       setLoadingRecipe(false);
+      setIsThinking(false);
     }
   };
 
@@ -152,7 +255,6 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
     if (mode === 'tradicional') {
       fetchTraditionalRecipe();
     }
-    // eslint-disable-next-line
   }, [mode]);
 
   // --- Tradicional: lógica de ingredientes ---
@@ -161,23 +263,26 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
     const last = ingredientes[ingredientes.length - 1];
     if (!last) return;
     if (tradicionalPlaced.includes(last.id)) return;
+    
     if (selectedRecipe.ingredients.includes(last.id)) {
       setTradicionalPlaced(prev => [...prev, last.id]);
       setWrongIngredient(null);
+      setShowSparkles(true);
       addSound.current?.play();
     } else {
       setWrongIngredient(last.id);
       wrongSound.current?.play();
-      setTimeout(() => setWrongIngredient(null), 1200);
+      setTimeout(() => setWrongIngredient(null), 1500);
     }
-    // eslint-disable-next-line
   }, [ingredientes.length]);
 
   const tradicionalCompleted = selectedRecipe && tradicionalPlaced.length === (selectedRecipe?.ingredients.length || 0);
 
   useEffect(() => {
-    if (tradicionalCompleted) winSound.current?.play();
-    // eslint-disable-next-line
+    if (tradicionalCompleted) {
+      setShowCelebration(true);
+      winSound.current?.play();
+    }
   }, [tradicionalCompleted]);
 
   // --- Creativo: lógica original ---
@@ -197,14 +302,15 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
   useEffect(() => {
     if (mode === 'creativo') {
       if (placedCount > prevPlacedCount.current && !completed) {
+        setShowSparkles(true);
         addSound.current?.play();
       }
       if (completed && prevPlacedCount.current !== placedCount) {
+        setShowCelebration(true);
         winSound.current?.play();
       }
       prevPlacedCount.current = placedCount;
     }
-    // eslint-disable-next-line
   }, [placedCount, completed, mode]);
 
   // Fox state y mensaje
@@ -212,8 +318,10 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
     mode === 'creativo' ? placedCount : tradicionalPlaced.length,
     mode === 'creativo' ? plateSections.length : (selectedRecipe?.ingredients.length || 0),
     mode === 'creativo' ? completed : !!tradicionalCompleted,
-    !!wrongIngredient
+    !!wrongIngredient,
+    isThinking || loadingRecipe
   );
+  
   const motivational = getMotivationalMessage(
     mode === 'creativo' ? placedCount : tradicionalPlaced.length,
     mode === 'creativo' ? plateSections.length : (selectedRecipe?.ingredients.length || 0),
@@ -229,8 +337,11 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
     setRecipeLoading(true);
     setRecipeError(null);
     setRecipeResult(null);
+    setIsThinking(true);
+    
     const ingredientNames = ingredientes.map(f => f.name).join(', ');
-    const prompt = `Dame una receta sencilla, divertida y saludable para niños pequeños usando estos ingredientes: ${ingredientNames}. Responde solo con la receta, en español, con pasos claros y cortos.`;
+    const prompt = `Dame una receta sencilla, divertida y saludable para niños pequeños usando estos ingredientes: ${ingredientNames}. Responde solo con la receta, en español, con pasos claros y cortos. Hazla muy divertida y usa emojis.`;
+    
     try {
       const response = await fetch(GEMINI_API_URL, {
         method: 'POST',
@@ -244,15 +355,21 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
       const data = await response.json();
       const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo generar la receta.';
       setRecipeResult(text);
+      setShowSparkles(true);
     } catch (err) {
-      setRecipeError('Ocurrió un error al generar la receta.');
+      setRecipeError('Ocurrió un error al generar la receta. ¡Intenta de nuevo! 🔄');
     } finally {
       setRecipeLoading(false);
+      setIsThinking(false);
     }
   };
 
   // Cambiar el handler del botón de reinicio
   const handleRestart = async () => {
+    setShowCelebration(false);
+    setShowSparkles(false);
+    setWrongIngredient(null);
+    
     if (mode === 'tradicional') {
       await resetDish();
       fetchTraditionalRecipe();
@@ -265,95 +382,151 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
   // --- Render ---
   return (
     <div className="nutritious-plate-game-wrapper">
+      {/* Particle Effects */}
+      <ParticleEffect isActive={showCelebration} type="celebration" />
+      <ParticleEffect isActive={showSparkles} type="sparkle" />
+      
       {/* Header superior centrado */}
       <div className="game-header-center">
         <div className="game-mode-selector">
-          <button className={mode === 'creativo' ? 'active' : ''} onClick={() => setMode('creativo')}>Modo Creativo</button>
-          <button className={mode === 'tradicional' ? 'active' : ''} onClick={() => { setMode('tradicional'); setTradicionalPlaced([]); setWrongIngredient(null); }}>Receta Tradicional</button>
+          <button 
+            className={mode === 'creativo' ? 'active' : ''} 
+            onClick={() => setMode('creativo')}
+            disabled={loadingRecipe}
+          >
+            🎨 Modo Creativo
+          </button>
+          <button 
+            className={mode === 'tradicional' ? 'active' : ''} 
+            onClick={() => { 
+              setMode('tradicional'); 
+              setTradicionalPlaced([]); 
+              setWrongIngredient(null); 
+            }}
+            disabled={loadingRecipe}
+          >
+            🍽️ Receta Tradicional
+          </button>
         </div>
+        
         <div className="progress-bar">
           <div
             className="progress-bar-fill"
-            style={{ width: `${(mode === 'creativo' ? ingredientes.length : (selectedRecipe?.ingredients.length || 0)) === 0 ? 0 : (mode === 'creativo' ? ingredientes.length : tradicionalPlaced.length) / (mode === 'creativo' ? ingredientes.length : (selectedRecipe?.ingredients.length || 1)) * 100}%` }}
+            style={{ 
+              width: `${(mode === 'creativo' ? ingredientes.length : (selectedRecipe?.ingredients.length || 0)) === 0 ? 0 : (mode === 'creativo' ? ingredientes.length : tradicionalPlaced.length) / (mode === 'creativo' ? ingredientes.length : (selectedRecipe?.ingredients.length || 1)) * 100}%` 
+            }}
           />
         </div>
+        
         <div className="points-bar">
-          <span className="points-label">Puntos:</span>
-          <span className="points-value">{mode === 'creativo' ? ingredientes.length * 10 : tradicionalPlaced.length * 20}</span>
-          {(mode === 'tradicional' && tradicionalCompleted) || (mode === 'creativo' && ingredientes.length > 0) ? <span className="points-trophy">🏆</span> : null}
+          <span className="points-label">🏆 Puntos:</span>
+          <span className="points-value">
+            {mode === 'creativo' ? ingredientes.length * 10 : tradicionalPlaced.length * 20}
+          </span>
+          {(mode === 'tradicional' && tradicionalCompleted) || (mode === 'creativo' && ingredientes.length > 0) ? 
+            <span className="points-trophy">🏆</span> : null
+          }
         </div>
       </div>
+
       {/* División en dos columnas */}
       <div className="nutritious-plate-game">
         <div className="plate-column">
-          <div className="guide-character">
-            <span className={`fox-face${foxState === 'celebrate' ? ' celebrate' : ''}`} role="img" aria-label="Guía">
-              {foxFaces[foxState as keyof typeof foxFaces]}
-            </span>
-            <div className="guide-text">
-              {motivational}
-            </div>
-          </div>
+          <FoxCharacter 
+            state={foxState} 
+            message={motivational} 
+            isAnimating={showSparkles || showCelebration}
+          />
+          
           {/* Plato central (SVG) */}
           {mode === 'tradicional' && selectedRecipe && (
-            <div className="traditional-recipe-title" style={{marginBottom: '8px'}}>{selectedRecipe.name}</div>
+            <div className="traditional-recipe-title">
+              {loadingRecipe ? '🤔 Pensando en una receta...' : selectedRecipe.name}
+            </div>
           )}
-          <svg width="420" height="420" viewBox="0 0 420 420">
-            {(mode === 'creativo'
-              ? Array.from(new Map(ingredientes.map(f => [f.id, f])).values())
-              : (selectedRecipe ? selectedRecipe.ingredients.map(id => foods.find(f => f.id === id)).filter(Boolean) as Food[] : [])
-            ).map((food, idx, arr) => {
-              const total = arr.length;
-              const angle = (360 / total) * idx;
-              const largeArc = 360 / total > 180 ? 1 : 0;
-              const radius = 170;
-              const x1 = 210 + radius * Math.cos((Math.PI / 180) * angle);
-              const y1 = 210 + radius * Math.sin((Math.PI / 180) * angle);
-              const x2 = 210 + radius * Math.cos((Math.PI / 180) * (angle + 360 / total));
-              const y2 = 210 + radius * Math.sin((Math.PI / 180) * (angle + 360 / total));
-              const pathData = `M210,210 L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z`;
-              // Coloreado: creativo siempre, tradicional solo si escaneado
-              let isPlaced = true;
-              if (mode === 'tradicional' && selectedRecipe) {
-                isPlaced = tradicionalPlaced.includes(food.id);
-              }
-              const color = plateSections[idx % plateSections.length].color;
-              return (
-                <g key={food.id + idx}>
-                  <path
-                    d={pathData}
-                    fill={isPlaced ? color : '#fff'}
-                    stroke="#888"
-                    strokeWidth="3"
-                    style={{ cursor: 'default', transition: 'fill 0.3s' }}
-                  />
-                  <g>
-                    <text
-                      x={210 + 110 * Math.cos((Math.PI / 180) * (angle + 360 / total / 2))}
-                      y={210 + 110 * Math.sin((Math.PI / 180) * (angle + 360 / total / 2))}
-                      textAnchor="middle"
-                      alignmentBaseline="middle"
-                      fontSize="2.8rem"
-                    >
-                      {food.image}
-                    </text>
-                    <text
-                      x={210 + 110 * Math.cos((Math.PI / 180) * (angle + 360 / total / 2))}
-                      y={210 + 140 * Math.sin((Math.PI / 180) * (angle + 360 / total / 2))}
-                      textAnchor="middle"
-                      alignmentBaseline="middle"
-                      fontSize="1.2rem"
-                      fill="#111"
-                      fontWeight="bold"
-                    >
-                      {food.name}
-                    </text>
+          
+          <div className="plate-area">
+            <svg width="420" height="420" viewBox="0 0 420 420">
+              {(mode === 'creativo'
+                ? Array.from(new Map(ingredientes.map(f => [f.id, f])).values())
+                : (selectedRecipe ? selectedRecipe.ingredients.map(id => foods.find(f => f.id === id)).filter(Boolean) as Food[] : [])
+              ).map((food, idx, arr) => {
+                const total = arr.length;
+                const angle = (360 / total) * idx;
+                const largeArc = 360 / total > 180 ? 1 : 0;
+                const radius = 170;
+                const x1 = 210 + radius * Math.cos((Math.PI / 180) * angle);
+                const y1 = 210 + radius * Math.sin((Math.PI / 180) * angle);
+                const x2 = 210 + radius * Math.cos((Math.PI / 180) * (angle + 360 / total));
+                const y2 = 210 + radius * Math.sin((Math.PI / 180) * (angle + 360 / total));
+                const pathData = `M210,210 L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z`;
+                
+                // Coloreado: creativo siempre, tradicional solo si escaneado
+                let isPlaced = true;
+                if (mode === 'tradicional' && selectedRecipe) {
+                  isPlaced = tradicionalPlaced.includes(food.id);
+                }
+                const color = plateSections[idx % plateSections.length].color;
+                
+                return (
+                  <g key={food.id + idx}>
+                    <path
+                      d={pathData}
+                      fill={isPlaced ? color : '#fff'}
+                      stroke="#888"
+                      strokeWidth="3"
+                      style={{ 
+                        cursor: 'default', 
+                        transition: 'fill 0.3s ease-in-out',
+                        filter: isPlaced ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' : 'none'
+                      }}
+                    />
+                    <g>
+                      <text
+                        x={210 + 110 * Math.cos((Math.PI / 180) * (angle + 360 / total / 2))}
+                        y={210 + 110 * Math.sin((Math.PI / 180) * (angle + 360 / total / 2))}
+                        textAnchor="middle"
+                        alignmentBaseline="middle"
+                        fontSize="2.8rem"
+                        style={{
+                          filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.1))',
+                          transition: 'all 0.3s ease'
+                        }}
+                      >
+                        {food.image}
+                      </text>
+                      <text
+                        x={210 + 110 * Math.cos((Math.PI / 180) * (angle + 360 / total / 2))}
+                        y={210 + 140 * Math.sin((Math.PI / 180) * (angle + 360 / total / 2))}
+                        textAnchor="middle"
+                        alignmentBaseline="middle"
+                        fontSize="1.2rem"
+                        fill="#111"
+                        fontWeight="bold"
+                        style={{
+                          textShadow: '0 1px 2px rgba(255,255,255,0.8)'
+                        }}
+                      >
+                        {food.name}
+                      </text>
+                    </g>
                   </g>
-                </g>
-              );
-            })}
-            <circle cx="210" cy="210" r="170" fill="none" stroke="#444" strokeWidth="6" />
-          </svg>
+                );
+              })}
+              <circle 
+                cx="210" 
+                cy="210" 
+                r="170" 
+                fill="none" 
+                stroke="#444" 
+                strokeWidth="6" 
+                style={{
+                  filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+                }}
+              />
+            </svg>
+          </div>
+          
           {(mode === 'tradicional' && tradicionalCompleted) || (mode === 'creativo' && ingredientes.length > 0) ? (
             <div className="celebration">
               <span role="img" aria-label="Estrella">🌟</span>
@@ -361,18 +534,27 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
               <div className="medal">🏅</div>
             </div>
           ) : null}
-          <button className="restart-btn" onClick={handleRestart}>Reiniciar</button>
+          
+          <button className="restart-btn" onClick={handleRestart} disabled={loadingRecipe}>
+            {loadingRecipe ? '⏳ Cargando...' : '🔄 Reiniciar'}
+          </button>
+          
           <div className="help-btn" title="¿Cómo jugar?">
             <span role="img" aria-label="Ayuda">❓</span>
             <div className="help-tooltip">
-              Escanea los ingredientes de la receta con las tarjetas NFC. ¡Cada vez que agregues uno, el plato se colorea! Completa todos para ganar una medalla y puntos.
+              🎮 <strong>¿Cómo jugar?</strong><br/>
+              📱 Escanea los ingredientes con las tarjetas NFC<br/>
+              🎨 En modo creativo: ¡Crea tu plato libremente!<br/>
+              🍽️ En modo tradicional: ¡Sigue la receta propuesta!<br/>
+              🏆 ¡Gana puntos y medallas por completar recetas!
             </div>
           </div>
         </div>
+        
         <div className="ingredients-column">
           <div className="ingredients-list">
             {(mode === 'creativo'
-              ? ingredientes.filter((food, idx, arr) => false)
+              ? ingredientes.filter((food, idx, arr) => false) // Empty for creative mode
               : (selectedRecipe
                   ? selectedRecipe.ingredients
                       .map(id => foods.find(f => f.id === id))
@@ -385,23 +567,52 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
                 className="ingredient-card"
                 style={{ cursor: 'default' }}
               >
-                <span className="ingredient-img" role="img" aria-label={food.name}>{food.image}</span>
+                <span className="ingredient-img" role="img" aria-label={food.name}>
+                  {food.image}
+                </span>
                 <div className="ingredient-name">{food.name}</div>
               </div>
             ))}
           </div>
+          
+          {/* Loading state for traditional mode */}
+          {mode === 'tradicional' && loadingRecipe && (
+            <div className="loading-state">
+              <div className="loading-spinner"></div>
+              <p>🤔 Creando una receta deliciosa...</p>
+            </div>
+          )}
+          
+          {/* Error state */}
+          {recipeError && (
+            <div className="ai-recipe-error">
+              {recipeError}
+            </div>
+          )}
         </div>
       </div>
+      
       {/* --- Panel de receta sugerida por IA --- */}
       {mode === 'creativo' && (
-        <div className="ingredients-column">
-          <button className="ai-recipe-btn" onClick={handleGenerateRecipe} disabled={ingredientes.length === 0 || recipeLoading}>
-            {recipeLoading ? 'Generando receta...' : 'Sugerir receta con IA'}
+        <div className="ai-recipe-panel">
+          <button 
+            className="ai-recipe-btn" 
+            onClick={handleGenerateRecipe} 
+            disabled={ingredientes.length === 0 || recipeLoading}
+          >
+            {recipeLoading ? (
+              <>
+                <span className="loading-spinner"></span>
+                🤖 Creando receta mágica...
+              </>
+            ) : (
+              '🤖✨ Sugerir receta con IA'
+            )}
           </button>
-          {recipeError && <div className="ai-recipe-error">{recipeError}</div>}
+          
           {recipeResult && (
             <div className="ai-recipe-result">
-              <div className="ai-recipe-title">Receta sugerida:</div>
+              <div className="ai-recipe-title">🍽️ ¡Receta Mágica Creada!</div>
               <div className="ai-recipe-text">{recipeResult}</div>
             </div>
           )}
