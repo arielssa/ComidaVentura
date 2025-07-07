@@ -46,17 +46,36 @@
   z-index: 1;
 }
 
-.game-header-center {
+.game-header-bar {
   width: 100%;
-  max-width: 900px;
+  max-width: 1200px;
   margin: 0 auto 30px auto;
   display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
+  flex-direction: row;
+  align-items: flex-start;
+  justify-content: flex-start;
   gap: 25px;
-  z-index: 2;
+  z-index: 10;
   position: relative;
+}
+
+.game-mode-selector.left-align {
+  justify-content: flex-start;
+  align-items: flex-start;
+  margin-left: 0;
+  margin-right: auto;
+  box-shadow: none;
+  background: transparent;
+  padding: 0;
+  border: none;
+}
+
+.game-mode-selector.left-align button {
+  margin-right: 10px;
+  margin-left: 0;
+  box-shadow: var(--card-shadow);
+  background: rgba(255,255,255,0.95);
+  border: 2px solid rgba(255,255,255,0.2);
 }
 
 .game-mode-selector {
@@ -171,9 +190,11 @@
 
 /* Enhanced Points Display */
 .points-display {
-  width: 100%;
+  margin-left: auto;
   display: flex;
-  justify-content: center;
+  align-items: center;
+  gap: 18px;
+  z-index: 10;
 }
 
 .points-container {
@@ -474,21 +495,23 @@
 }
 
 .empty-plate-categories {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 15px;
-  margin-top: 20px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 12px 24px;
+  margin-top: 18px;
+  margin-bottom: 0;
+  max-width: 220px;
+  margin-left: auto;
+  margin-right: auto;
 }
 
 .category-hint {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 10px;
-  background: rgba(255, 255, 255, 0.7);
-  border-radius: 15px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  transition: all 0.3s ease;
+  flex: 1 1 80px;
+  min-width: 80px;
+  max-width: 90px;
+  margin: 0;
 }
 
 .category-hint:hover {
@@ -497,15 +520,16 @@
 }
 
 .category-emoji {
-  font-size: 1.8rem;
-  margin-bottom: 5px;
+  font-size: 1.3rem;
+  margin-bottom: 2px;
 }
 
 .category-label {
-  font-size: 0.9rem;
-  font-weight: 600;
-  color: var(--primary-blue);
+  color: var(--primary-purple);
+  font-family: 'Comic Neue', cursive;
+  font-size: 0.95rem;
   text-align: center;
+  margin-top: 0;
 }
 
 /* Achievement Badge */
@@ -1353,4 +1377,313 @@
   .help-btn:hover {
     transform: none;
   }
+}
+
+/* --- NUEVO LAYOUT HORIZONTAL Y PANELES --- */
+.main-layout {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: flex-start;
+  gap: 32px;
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.side-panel {
+  width: 320px;
+  min-width: 260px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 24px;
+}
+
+.left-panel {
+  align-items: flex-end;
+}
+
+.right-panel {
+  align-items: flex-start;
+}
+
+.center-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 18px;
+  min-width: 380px;
+  max-width: 440px;
+}
+
+/* --- TARJETAS DE BIENVENIDA E INGREDIENTES --- */
+.welcome-card, .ingredients-card {
+  background: rgba(255,255,255,0.97);
+  border-radius: 24px;
+  box-shadow: var(--card-shadow);
+  padding: 32px 24px 24px 24px;
+  width: 100%;
+  max-width: 320px;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  border: 2.5px solid var(--primary-orange);
+}
+
+.welcome-title.creative {
+  color: var(--primary-orange);
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.5rem;
+  margin-bottom: 6px;
+  text-align: center;
+}
+.welcome-title.traditional {
+  color: var(--primary-blue);
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.5rem;
+  margin-bottom: 6px;
+  text-align: center;
+  text-transform: uppercase;
+}
+.welcome-text p {
+  color: #444;
+  font-size: 1.1rem;
+  text-align: center;
+}
+
+.ingredients-title.creative {
+  color: var(--primary-purple);
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.3rem;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.ingredients-title.traditional {
+  color: var(--primary-green);
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.3rem;
+  margin-bottom: 4px;
+  text-align: center;
+}
+.ingredients-card p {
+  color: #444;
+  font-size: 1.05rem;
+  text-align: center;
+}
+
+/* --- BOTÓN DE IDEAS Y REINICIAR --- */
+.ai-recipe-btn {
+  margin-top: 18px;
+  background: linear-gradient(90deg, var(--primary-purple), var(--secondary-pink));
+  color: #fff;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 18px;
+  padding: 12px 28px;
+  box-shadow: 0 4px 16px rgba(175, 82, 222, 0.12);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.ai-recipe-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.ai-recipe-btn:hover:not(:disabled) {
+  background: linear-gradient(90deg, var(--secondary-pink), var(--primary-purple));
+  transform: scale(1.04);
+}
+
+.restart-btn {
+  margin-top: 18px;
+  background: linear-gradient(90deg, var(--primary-orange), var(--secondary-yellow));
+  color: #fff;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.1rem;
+  border: none;
+  border-radius: 18px;
+  padding: 12px 28px;
+  box-shadow: 0 4px 16px rgba(255, 149, 0, 0.12);
+  cursor: pointer;
+  transition: background 0.2s, transform 0.2s;
+}
+.restart-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+.restart-btn:hover:not(:disabled) {
+  background: linear-gradient(90deg, var(--secondary-yellow), var(--primary-orange));
+  transform: scale(1.04);
+}
+
+/* --- AJUSTES DE LISTA DE INGREDIENTES --- */
+.ingredients-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+  margin-top: 10px;
+  margin-bottom: 8px;
+}
+.ingredient-card {
+  background: #fff;
+  border-radius: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.07);
+  padding: 8px 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 70px;
+  max-width: 90px;
+  gap: 4px;
+  border: 1.5px solid var(--primary-purple);
+}
+.ingredient-img {
+  width: 38px;
+  height: 38px;
+  object-fit: contain;
+  margin-bottom: 2px;
+}
+.ingredient-name {
+  font-size: 0.95rem;
+  color: var(--primary-purple);
+  font-family: 'Comic Neue', cursive;
+  text-align: center;
+}
+
+/* --- AJUSTES RESPONSIVE --- */
+@media (max-width: 1100px) {
+  .main-layout {
+    flex-direction: column;
+    align-items: center;
+    gap: 18px;
+  }
+  .side-panel, .center-panel {
+    min-width: 0;
+    max-width: 98vw;
+    width: 98vw;
+  }
+}
+
+/* --- BOTÓN DE AYUDA EN HEADER --- */
+.help-btn-header {
+  margin-left: 0;
+  z-index: 1001;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  height: 48px;
+}
+.help-icon-header {
+  font-size: 2.1rem;
+  color: var(--primary-purple);
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 2px 8px rgba(175, 82, 222, 0.13);
+  padding: 4px 10px;
+  transition: background 0.2s, color 0.2s, box-shadow 0.2s;
+  border: 2px solid var(--primary-purple);
+}
+.help-btn-header:hover .help-icon-header,
+.help-btn-header:focus .help-icon-header {
+  background: var(--primary-purple);
+  color: #fff;
+  box-shadow: 0 4px 16px rgba(175, 82, 222, 0.18);
+}
+.help-popup {
+  position: fixed;
+  top: 70px;
+  right: 32px;
+  min-width: 260px;
+  background: #fff;
+  border-radius: 18px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  padding: 18px 22px 14px 22px;
+  z-index: 2000;
+  border: 2.5px solid var(--primary-purple);
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  animation: popup-fade-in 0.18s cubic-bezier(0.4,0,0.2,1);
+  max-width: 90vw;
+}
+@keyframes popup-fade-in {
+  from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+.help-line {
+  font-size: 1.08rem;
+  color: var(--primary-purple);
+  font-family: 'Comic Neue', cursive;
+  text-align: left;
+  line-height: 1.4;
+}
+.help-line:first-child {
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.18rem;
+  color: var(--primary-orange);
+  margin-bottom: 4px;
+}
+
+@media (max-width: 600px) {
+  .help-popup {
+    right: 8px;
+    left: 8px;
+    min-width: unset;
+    max-width: 98vw;
+  }
+}
+
+.nutritious-plate-game-wrapper, .main-layout, .center-panel, .side-panel {
+  overflow: visible !important;
+}
+
+.center-ingredient-counter {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 70px;
+  height: 70px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 4px 18px rgba(175, 82, 222, 0.13);
+  border: 3px solid var(--primary-purple);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+  font-family: 'Fredoka One', cursive;
+  opacity: 1;
+  transition: opacity 0.3s;
+}
+.counter-number-center {
+  font-size: 2.1rem;
+  color: var(--primary-orange);
+  font-weight: bold;
+  line-height: 1;
+}
+.counter-icon-center {
+  font-size: 1.3rem;
+  color: var(--primary-purple);
+  margin-top: 2px;
+}
+
+.counter-opacity-low {
+  opacity: 0.1 !important;
+}
+
+.plate-svg-container {
+  position: relative;
+  width: 420px;
+  height: 420px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }

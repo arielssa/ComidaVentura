@@ -51,8 +51,7 @@ const celebrationMessages = [
 ];
 
 const waitingMessages = [
-  '¡Hola! ¡Estoy listo para ayudarte a crear algo delicioso! 🍽️',
-  'Escanea tu primer ingrediente para comenzar la aventura culinaria 🌟',
+  'Agrega ingredientes paracomenzar la aventura culinaria 🌟',
   '¿Qué rico plato vamos a crear hoy? ¡Empecemos! 👨‍🍳',
 ];
 
@@ -98,7 +97,6 @@ const ProgressRing: React.FC<{ progress: number; total: number; mode: string }> 
       <div className="progress-content">
         <div className="progress-text">
           <span className="progress-numbers">{progress}/{total}</span>
-          <span className="progress-label">{mode === 'creativo' ? 'Items' : 'Receta'}</span>
         </div>
       </div>
     </div>
@@ -116,7 +114,7 @@ const EmptyPlate: React.FC<{ mode: string }> = ({ mode }) => {
         </h3>
         <p className="empty-plate-subtitle">
           {mode === 'creativo' 
-            ? 'Escanea ingredientes para llenar tu plato mágico'
+            ? 'Escanea ingredientes para hacer tu plato mágico'
             : 'Escanea los ingredientes de la receta uno por uno'
           }
         </p>
@@ -280,6 +278,14 @@ const wrongSoundUrl = 'https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2
 
 const GEMINI_API_KEY = 'AIzaSyCLbIaIKobsQWdCMFFnrTScXbIqeeRg4Lk';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+
+const HOW_TO_PLAY = [
+  '🎮 ¿Cómo jugar?',
+  '📱 Escanea los ingredientes con las tarjetas NFC',
+  '🎨 En modo creativo: ¡Crea tu plato libremente!',
+  '🍽️ En modo tradicional: ¡Sigue la receta propuesta!',
+  '🏆 ¡Gana puntos y medallas por completar recetas!'
+];
 
 const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingredientes }) => {
   const { resetDish } = useArduino();
@@ -510,13 +516,32 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
   const totalRequired = mode === 'creativo' ? Math.max(ingredientes.length, 1) : (selectedRecipe?.ingredients.length || 1);
 
   // --- Render ---
+  const [showHelp, setShowHelp] = useState(false);
+  const helpBtnRef = useRef<HTMLDivElement>(null);
+
+  // Cerrar el pop-up si se hace click fuera
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (helpBtnRef.current && !helpBtnRef.current.contains(event.target as Node)) {
+        setShowHelp(false);
+      }
+    }
+    if (showHelp) {
+      document.addEventListener('mousedown', handleClickOutside);
+    } else {
+      document.removeEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showHelp]);
+
   return (
     <div className="nutritious-plate-game-wrapper">
       {/* Particle Effects */}
       <ParticleEffect isActive={showCelebration} type="celebration" />
       <ParticleEffect isActive={showSparkles} type="sparkle" />
       <ParticleEffect isActive={!!showAchievement} type="achievement" />
-      
       {/* Achievement Badge */}
       {showAchievement && (
         <AchievementBadge 
@@ -524,10 +549,10 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
           isVisible={true}
         />
       )}
-      
+
       {/* Header superior mejorado */}
-      <div className="game-header-center">
-        <div className="game-mode-selector">
+      <div className="game-header-bar">
+        <div className="game-mode-selector left-align">
           <button 
             className={mode === 'creativo' ? 'active' : ''} 
             onClick={() => setMode('creativo')}
@@ -547,14 +572,6 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
             🍽️ Receta Tradicional
           </button>
         </div>
-        
-        {/* Progress Ring mejorado */}
-        <ProgressRing 
-          progress={currentIngredientCount} 
-          total={totalRequired} 
-          mode={mode}
-        />
-        
         <div className="points-display">
           <div className="points-container">
             <span className="points-icon">🏆</span>
@@ -569,218 +586,189 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
             }
           </div>
         </div>
-      </div>
-
-      {/* Layout principal mejorado */}
-      <div className="nutritious-plate-game">
-        <div className="plate-column">
-          <FoxCharacter 
-            state={foxState} 
-            message={motivational} 
-            isAnimating={showSparkles || showCelebration}
-            ingredientCount={ingredientes.length}
-          />
-          
-          {/* Título de receta tradicional */}
-          {mode === 'tradicional' && selectedRecipe && (
-            <div className="traditional-recipe-title">
-              {loadingRecipe ? '🤔 Pensando en una receta...' : selectedRecipe.name}
+        <div
+          className="help-btn-header"
+          ref={helpBtnRef}
+          onMouseEnter={() => setShowHelp(true)}
+          onMouseLeave={() => setShowHelp(false)}
+          onClick={() => setShowHelp((v) => !v)}
+          tabIndex={0}
+          style={{ position: 'relative', marginLeft: '18px', cursor: 'pointer' }}
+        >
+          <span role="img" aria-label="Ayuda" className="help-icon-header">❓</span>
+          {showHelp && (
+            <div className="help-popup">
+              {HOW_TO_PLAY.map((line, idx) => (
+                <div key={idx} className="help-line">{line}</div>
+              ))}
             </div>
           )}
-          
-          {/* Plato mejorado */}
-          <div className="plate-area">
-            {ingredientes.length === 0 ? (
-              <EmptyPlate mode={mode} />
-            ) : (
-              <svg width="420" height="420" viewBox="0 0 420 420">
-                {(mode === 'creativo'
-                  ? Array.from(new Map(ingredientes.map(f => [f.id, f])).values())
-                  : (selectedRecipe ? selectedRecipe.ingredients.map(id => foods.find(f => f.id === id)).filter(Boolean) as Food[] : [])
-                ).map((food, idx, arr) => {
-                  const total = arr.length;
-                  const angle = (360 / total) * idx;
-                  const largeArc = 360 / total > 180 ? 1 : 0;
-                  const radius = 170;
-                  const x1 = 210 + radius * Math.cos((Math.PI / 180) * angle);
-                  const y1 = 210 + radius * Math.sin((Math.PI / 180) * angle);
-                  const x2 = 210 + radius * Math.cos((Math.PI / 180) * (angle + 360 / total));
-                  const y2 = 210 + radius * Math.sin((Math.PI / 180) * (angle + 360 / total));
-                  const pathData = `M210,210 L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z`;
-                  
-                  // Coloreado: creativo siempre, tradicional solo si escaneado
-                  let isPlaced = true;
-                  if (mode === 'tradicional' && selectedRecipe) {
-                    isPlaced = tradicionalPlaced.includes(food.id);
-                  }
-                  const color = plateSections[idx % plateSections.length].color;
-                  
-                  return (
-                    <g key={food.id + idx} className="food-section">
-                      <path
-                        d={pathData}
-                        fill={isPlaced ? color : '#fff'}
-                        stroke="#888"
-                        strokeWidth="3"
-                        style={{ 
-                          cursor: 'default', 
-                          transition: 'all 0.3s ease-in-out',
-                          filter: isPlaced ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' : 'none'
-                        }}
-                      />
-                      <g>
-                        <text
-                          x={210 + 110 * Math.cos((Math.PI / 180) * (angle + 360 / total / 2))}
-                          y={210 + 110 * Math.sin((Math.PI / 180) * (angle + 360 / total / 2))}
-                          textAnchor="middle"
-                          alignmentBaseline="middle"
-                          fontSize="3.2rem"
-                          style={{
-                            filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
-                            transition: 'all 0.3s ease'
-                          }}
-                        >
-                          {food.image}
-                        </text>
-                        <text
-                          x={210 + 110 * Math.cos((Math.PI / 180) * (angle + 360 / total / 2))}
-                          y={210 + 140 * Math.sin((Math.PI / 180) * (angle + 360 / total / 2))}
-                          textAnchor="middle"
-                          alignmentBaseline="middle"
-                          fontSize="1.4rem"
-                          fill="#111"
-                          fontWeight="bold"
-                          style={{
-                            textShadow: '0 1px 2px rgba(255,255,255,0.8)'
-                          }}
-                        >
-                          {food.name}
-                        </text>
-                      </g>
-                    </g>
-                  );
-                })}
-                <circle 
-                  cx="210" 
-                  cy="210" 
-                  r="170" 
-                  fill="none" 
-                  stroke="#444" 
-                  strokeWidth="6" 
-                  style={{
-                    filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
-                  }}
-                />
-              </svg>
-            )}
-          </div>
-          
-          {/* Botón de reinicio mejorado */}
-          <button className="restart-btn" onClick={handleRestart} disabled={loadingRecipe}>
-            {loadingRecipe ? '⏳ Cargando...' : '🔄 Reiniciar'}
-          </button>
-          
-          {/* Botón de ayuda mejorado */}
-          <div className="help-btn" title="¿Cómo jugar?">
-            <span role="img" aria-label="Ayuda">❓</span>
-            <div className="help-tooltip">
-              🎮 <strong>¿Cómo jugar?</strong><br/>
-              📱 Escanea los ingredientes con las tarjetas NFC<br/>
-              🎨 En modo creativo: ¡Crea tu plato libremente!<br/>
-              🍽️ En modo tradicional: ¡Sigue la receta propuesta!<br/>
-              🏆 ¡Gana puntos y medallas por completar recetas!
+        </div>
+      </div>
+
+      {/* Layout principal reestructurado */}
+      <div className="nutritious-plate-game main-layout">
+        {/* Panel Izquierdo */}
+        <div className="side-panel left-panel">
+          <div className="welcome-card">
+            <div className="welcome-fox">
+              <FoxCharacter 
+                state={foxState} 
+                message={motivational} 
+                isAnimating={showSparkles || showCelebration}
+                ingredientCount={ingredientes.length}
+              />
+            </div>
+            <div className="welcome-text">
+              {mode === 'creativo' ? (
+                <>
+                  <h2 className="welcome-title creative">¡Hola, Chef!</h2>
+                  <p>Agrega tu primer ingrediente para comenzar la aventura culinaria.</p>
+                </>
+              ) : (
+                <>
+                  <h2 className="welcome-title traditional">¡HOLA, PEQUE CHEF!</h2>
+                  <p>¡Pon un ingrediente en el plato mágico para empezar a jugar!</p>
+                </>
+              )}
             </div>
           </div>
         </div>
-        
-        <div className="ingredients-column">
-          {/* Modo Tradicional - Lista de ingredientes */}
-          {mode === 'tradicional' && (
-            <>
-              <div className="ingredients-list">
-                {(selectedRecipe
-                  ? selectedRecipe.ingredients
-                      .map(id => foods.find(f => f.id === id))
-                      .filter(Boolean)
-                      .filter((food) => !tradicionalPlaced.includes(food!.id)) as Food[]
-                  : []
-                ).map((food, idx) => (
-                  <div
-                    key={food.id + idx}
-                    className="ingredient-card"
-                    style={{ cursor: 'default' }}
-                  >
-                    <span className="ingredient-img" role="img" aria-label={food.name}>
-                      {food.image}
-                    </span>
-                    <div className="ingredient-name">{food.name}</div>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Loading state for traditional mode */}
-              {loadingRecipe && (
-                <div className="loading-state">
-                  <div className="loading-spinner"></div>
-                  <p>🤔 Creando una receta deliciosa...</p>
-                </div>
-              )}
-              
-              {/* Error state */}
-              {recipeError && (
-                <div className="ai-recipe-error">
-                  {recipeError}
-                </div>
-              )}
-            </>
-          )}
 
-          {/* Modo Creativo - Panel de sugerencia de receta con IA */}
-          {mode === 'creativo' && (
-            <div className="ai-recipe-panel">
-              <div className="creative-mode-title">
-                <h3>🎨 ¡Crea tu plato perfecto!</h3>
-                <p>Escanea ingredientes y genera una receta mágica</p>
+        {/* Panel Central */}
+        <div className="center-panel">
+          <div className="plate-area">
+            <div className="plate-svg-container">
+              <div className={`center-ingredient-counter${ingredientes.length === 0 ? ' counter-opacity-low' : ''}`}>
+                <span className="counter-number-center">{ingredientes.length}</span>
+                <span className="counter-icon-center">🥗</span>
               </div>
-              
-              <button 
-                className="ai-recipe-btn" 
-                onClick={handleGenerateRecipe} 
-                disabled={ingredientes.length === 0 || recipeLoading}
-              >
-                {recipeLoading ? (
-                  <>
-                    <span className="loading-spinner"></span>
-                    🤖 Creando receta mágica...
-                  </>
-                ) : (
-                  '🤖✨ Sugerir receta con IA'
-                )}
-              </button>
-              
-              {ingredientes.length === 0 && (
-                <div className="creative-mode-help">
-                  <div className="help-icon">🎯</div>
-                  <p><strong>📱 Paso 1:</strong> Escanea algunos ingredientes</p>
-                  <p><strong>✨ Paso 2:</strong> Genera una receta personalizada</p>
-                  <p><strong>🍽️ Paso 3:</strong> ¡Disfruta cocinando!</p>
-                </div>
-              )}
-              
-              {recipeResult && (
-                <div className="ai-recipe-result">
-                  <div className="ai-recipe-title">🍽️ ¡Receta Mágica Creada!</div>
-                  <div className="ai-recipe-text">{recipeResult}</div>
-                </div>
-              )}
-              
-              {recipeError && (
-                <div className="ai-recipe-error">
-                  {recipeError}
-                </div>
+              {ingredientes.length === 0 ? (
+                <EmptyPlate mode={mode} />
+              ) : (
+                <svg width="420" height="420" viewBox="0 0 420 420">
+                  {(mode === 'creativo'
+                    ? Array.from(new Map(ingredientes.map(f => [f.id, f])).values())
+                    : (selectedRecipe ? selectedRecipe.ingredients.map(id => foods.find(f => f.id === id)).filter(Boolean) as Food[] : [])
+                  ).map((food, idx, arr) => {
+                    const total = arr.length;
+                    const angle = (360 / total) * idx;
+                    const largeArc = 360 / total > 180 ? 1 : 0;
+                    const radius = 170;
+                    const x1 = 210 + radius * Math.cos((Math.PI / 180) * angle);
+                    const y1 = 210 + radius * Math.sin((Math.PI / 180) * angle);
+                    const x2 = 210 + radius * Math.cos((Math.PI / 180) * (angle + 360 / total));
+                    const y2 = 210 + radius * Math.sin((Math.PI / 180) * (angle + 360 / total));
+                    const pathData = `M210,210 L${x1},${y1} A${radius},${radius} 0 ${largeArc},1 ${x2},${y2} Z`;
+                    
+                    // Coloreado: creativo siempre, tradicional solo si escaneado
+                    let isPlaced = true;
+                    if (mode === 'tradicional' && selectedRecipe) {
+                      isPlaced = tradicionalPlaced.includes(food.id);
+                    }
+                    const color = plateSections[idx % plateSections.length].color;
+                    
+                    return (
+                      <g key={food.id + idx} className="food-section">
+                        <path
+                          d={pathData}
+                          fill={isPlaced ? color : '#fff'}
+                          stroke="#888"
+                          strokeWidth="3"
+                          style={{ 
+                            cursor: 'default', 
+                            transition: 'all 0.3s ease-in-out',
+                            filter: isPlaced ? 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))' : 'none'
+                          }}
+                        />
+                        <g>
+                          <text
+                            x={210 + 110 * Math.cos((Math.PI / 180) * (angle + 360 / total / 2))}
+                            y={210 + 110 * Math.sin((Math.PI / 180) * (angle + 360 / total / 2))}
+                            textAnchor="middle"
+                            alignmentBaseline="middle"
+                            fontSize="3.2rem"
+                            style={{
+                              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
+                              transition: 'all 0.3s ease'
+                            }}
+                          >
+                            {food.image}
+                          </text>
+                          <text
+                            x={210 + 110 * Math.cos((Math.PI / 180) * (angle + 360 / total / 2))}
+                            y={210 + 140 * Math.sin((Math.PI / 180) * (angle + 360 / total / 2))}
+                            textAnchor="middle"
+                            alignmentBaseline="middle"
+                            fontSize="1.4rem"
+                            fill="#111"
+                            fontWeight="bold"
+                            style={{
+                              textShadow: '0 1px 2px rgba(255,255,255,0.8)'
+                            }}
+                          >
+                            {food.name}
+                          </text>
+                        </g>
+                      </g>
+                    );
+                  })}
+                  <circle 
+                    cx="210" 
+                    cy="210" 
+                    r="170" 
+                    fill="none" 
+                    stroke="#444" 
+                    strokeWidth="6" 
+                    style={{
+                      filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))'
+                    }}
+                  />
+                </svg>
               )}
             </div>
-          )}
+          </div>
+          <button className="restart-btn" onClick={handleRestart} disabled={loadingRecipe}>
+            {mode === 'creativo' ? 'Reiniciar' : 'Limpiar'}
+          </button>
+        </div>
+
+        {/* Panel Derecho */}
+        <div className="side-panel right-panel">
+          <div className="ingredients-card">
+            {mode === 'creativo' ? (
+              <>
+                <h2 className="ingredients-title creative">¡Creativo!</h2>
+                <p>Agrega ingredientes para llenar tu plato mágico.</p>
+                <div className="ingredients-list">
+                  {ingredientes.map((food) => (
+                    <div key={food.id} className="ingredient-card">
+                      <img src={food.image} alt={food.name} className="ingredient-img" />
+                      <span className="ingredient-name">{food.name}</span>
+                    </div>
+                  ))}
+                </div>
+                <button className="ai-recipe-btn" onClick={handleGenerateRecipe} disabled={ingredientes.length === 0 || recipeLoading}>
+                  ¡Dame ideas!
+                </button>
+                {recipeResult && <div className="ai-recipe-result">{recipeResult}</div>}
+                {recipeError && <div className="ai-recipe-error">{recipeError}</div>}
+              </>
+            ) : (
+              <>
+                <h2 className="ingredients-title traditional">¡Tus ingredientes!</h2>
+                <p>¡Mira qué cosas ricas tienes!</p>
+                <div className="ingredients-list">
+                  {(selectedRecipe ? selectedRecipe.ingredients.map(id => foods.find(f => f.id === id)).filter(Boolean) as Food[] : []).map((food) => (
+                    <div key={food.id} className="ingredient-card">
+                      <img src={food.image} alt={food.name} className="ingredient-img" />
+                      <span className="ingredient-name">{food.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
         </div>
       </div>
     </div>
