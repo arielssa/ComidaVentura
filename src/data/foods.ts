@@ -49,16 +49,7 @@ export const foods: Food[] = [
     image: '🥕',
     color: 'bg-orange-100'
   },
-  {
-    id: 'spinach',
-    name: 'Espinacas',
-    category: 'vegetable',
-    nutrition: { calories: 23, protein: 3, carbs: 4, fat: 0.4, fiber: 2.2, sugar: 0.4 },
-    healthScore: 5,
-    image: '🥬',
-    color: 'bg-green-100'
-  },
-  
+    
   // Fruits
   {
     id: 'apple',
@@ -78,17 +69,7 @@ export const foods: Food[] = [
     image: '🍌',
     color: 'bg-yellow-100'
   },
-  {
-    id: 'berries',
-    name: 'Frutos Rojos',
-    category: 'fruit',
-    nutrition: { calories: 57, protein: 1.4, carbs: 14, fat: 0.3, fiber: 8, sugar: 5 },
-    healthScore: 5,
-    image: '🫐',
-    color: 'bg-purple-100'
-  },
-  
-  // Grains
+   // Grains
   {
     id: 'brown-rice',
     name: 'Arroz Integral',
@@ -97,15 +78,6 @@ export const foods: Food[] = [
     healthScore: 4,
     image: '🍚',
     color: 'bg-amber-100'
-  },
-  {
-    id: 'quinoa',
-    name: 'Quinoa',
-    category: 'grain',
-    nutrition: { calories: 120, protein: 4.4, carbs: 22, fat: 1.9, fiber: 2.8, sugar: 0.9 },
-    healthScore: 5,
-    image: '🌾',
-    color: 'bg-yellow-100'
   },
   {
     id: 'white-bread',
@@ -147,22 +119,5 @@ export const foods: Food[] = [
     image: '🍟',
     color: 'bg-red-100'
   },
-  {
-    id: 'candy',
-    name: 'Dulces',
-    category: 'sweet',
-    nutrition: { calories: 394, protein: 0, carbs: 98, fat: 0.2, fiber: 0, sugar: 89 },
-    healthScore: 1,
-    image: '🍬',
-    color: 'bg-pink-100'
-  },
-  {
-    id: 'nuts',
-    name: 'Frutos Secos',
-    category: 'snack',
-    nutrition: { calories: 607, protein: 15, carbs: 21, fat: 54, fiber: 12, sugar: 4 },
-    healthScore: 4,
-    image: '🥜',
-    color: 'bg-amber-100'
-  }
+  
 ];
