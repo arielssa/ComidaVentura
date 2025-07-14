@@ -279,6 +279,9 @@ const wrongSoundUrl = 'https://cdn.pixabay.com/audio/2022/03/15/audio_115b9bfae2
 const GEMINI_API_KEY = 'AIzaSyCLbIaIKobsQWdCMFFnrTScXbIqeeRg4Lk';
 const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
 
+// --- Configuración para generación de imágenes con Gemini ---
+const GEMINI_IMAGE_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=TU_API_KEY_AQUI'; // Cambia TU_API_KEY_AQUI por tu clave real
+
 const HOW_TO_PLAY = [
   '🎮 ¿Cómo jugar?',
   '📱 Escanea los ingredientes con las tarjetas NFC',
@@ -464,15 +467,32 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
   // --- GEMINI API ---
   const [recipeLoading, setRecipeLoading] = useState(false);
   const [recipeResult, setRecipeResult] = useState<string | null>(null);
+  const [showRecipe, setShowRecipe] = useState(false);
+  const [recipeSteps, setRecipeSteps] = useState<Array<{ texto: string; imagen: string; url?: string }>>([]);
+  const [currentStep, setCurrentStep] = useState(0);
+  const [loadingImages, setLoadingImages] = useState(false);
+  const [recipeTitle, setRecipeTitle] = useState<string | null>(null);
 
   const handleGenerateRecipe = async () => {
     setRecipeLoading(true);
     setRecipeError(null);
     setRecipeResult(null);
     setIsThinking(true);
+    setRecipeSteps([]);
+    setCurrentStep(0);
+    setLoadingImages(false);
+    setRecipeTitle(null);
     
     const ingredientNames = ingredientes.map(f => f.name).join(', ');
-    const prompt = `Dame una receta sencilla, divertida y saludable para niños pequeños usando estos ingredientes: ${ingredientNames}. Responde solo con la receta, en español, con pasos claros y cortos. Hazla muy divertida y usa emojis.`;
+    const prompt = `Dame una receta sencilla, divertida y saludable para niños pequeños usando estos ingredientes: ${ingredientNames}.
+Responde SOLO con el JSON, sin explicaciones, sin texto antes o después, sin comentarios, sin formato Markdown. El JSON debe tener un campo "titulo" (nombre divertido de la receta) y un array llamado pasos, donde cada paso tiene un campo "texto" (explicación divertida y breve del paso) y un campo "imagen" (descripción visual para generar una imagen de ese paso, estilo dibujo animado, sin texto ni marcas de agua). La receta debe tener solo 3 o 4 pasos, nunca más. Ejemplo:
+{
+  "titulo": "Ensalada mágica de frutas",
+  "pasos": [
+    { "texto": "Corta la manzana en trozos pequeños 🍎", "imagen": "Niño cortando una manzana en una tabla de cocina, estilo dibujo animado" },
+    { "texto": "Pon la manzana en un plato bonito", "imagen": "Plato colorido con trozos de manzana, estilo dibujo animado" }
+  ]
+}`;
     
     try {
       const response = await fetch(GEMINI_API_URL, {
@@ -485,8 +505,55 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
         })
       });
       const data = await response.json();
-      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || 'No se pudo generar la receta.';
-      setRecipeResult(text);
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      let pasos: Array<{ texto: string; imagen: string }> = [];
+      try {
+        // Extraer el bloque JSON aunque venga rodeado de texto
+        let jsonText = text;
+        const match = text.match(/\{[\s\S]*\}/);
+        if (match) {
+          jsonText = match[0];
+        }
+        const json = JSON.parse(jsonText);
+        pasos = json.pasos || [];
+        setRecipeTitle(json.titulo || null);
+      } catch (e) {
+        setRecipeError('No se pudo procesar la receta. Intenta de nuevo.');
+        setRecipeLoading(false);
+        setIsThinking(false);
+        setRecipeTitle(null);
+        return;
+      }
+      // Ahora, por cada paso, pide la imagen a Gemini
+      setLoadingImages(true);
+      const stepsWithImages = await Promise.all(
+        pasos.map(async (paso) => {
+          try {
+            // Petición a Gemini para generar imagen (simulado, debes poner tu endpoint y clave)
+            const imgPrompt = paso.imagen;
+            const imgResponse = await fetch(GEMINI_IMAGE_API_URL, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                contents: [
+                  { parts: [ { text: imgPrompt } ] }
+                ]
+              })
+            });
+            const imgData = await imgResponse.json();
+            // Aquí debes adaptar según la respuesta real de Gemini para imágenes
+            // Por ejemplo, si devuelve una URL:
+            const url = imgData?.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data || null;
+            // Si Gemini devuelve una URL directa, úsala. Si es base64, puedes hacer: 'data:image/png;base64,' + url
+            return { ...paso, url: url ? 'data:image/png;base64,' + url : undefined };
+          } catch {
+            return { ...paso };
+          }
+        })
+      );
+      setRecipeSteps(stepsWithImages);
+      setLoadingImages(false);
+      setShowRecipe(true);
       setShowSparkles(true);
     } catch {
       setRecipeError('Ocurrió un error al generar la receta. ¡Intenta de nuevo! 🔄');
@@ -496,12 +563,25 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
     }
   };
 
+  const handleBackToIngredients = () => {
+    setShowRecipe(false);
+    setRecipeResult(null);
+    setRecipeError(null);
+    setRecipeSteps([]);
+    setCurrentStep(0);
+    setRecipeTitle(null);
+  };
+
   // Cambiar el handler del botón de reinicio
   const handleRestart = async () => {
     setShowCelebration(false);
     setShowSparkles(false);
     setWrongIngredient(null);
     setShowAchievement(null);
+    setShowRecipe(false);
+    setRecipeResult(null);
+    setRecipeError(null);
+    setRecipeTitle(null);
     
     if (mode === 'tradicional') {
       await resetDish();
@@ -648,7 +728,10 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
               ) : (
                 <svg width="420" height="420" viewBox="0 0 420 420">
                   {(mode === 'creativo'
-                    ? Array.from(new Map(ingredientes.map(f => [f.id, f])).values())
+                    ? Array.from(new Map(ingredientes.map(f => [f.id, f])).values()).map(f => {
+                        // Buscar el emoji en foods si no existe en food.image
+                        return f.image ? f : foods.find(foodObj => foodObj.id === f.id) || f;
+                      })
                     : (selectedRecipe ? selectedRecipe.ingredients.map(id => foods.find(f => f.id === id)).filter(Boolean) as Food[] : [])
                   ).map((food, idx, arr) => {
                     const total = arr.length;
@@ -684,12 +767,12 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
                         <g>
                           <text
                             x={210 + 110 * Math.cos((Math.PI / 180) * (angle + 360 / total / 2))}
-                            y={210 + 110 * Math.sin((Math.PI / 180) * (angle + 360 / total / 2))}
+                            y={210 + 95 * Math.sin((Math.PI / 180) * (angle + 360 / total / 2))}
                             textAnchor="middle"
                             alignmentBaseline="middle"
-                            fontSize="3.2rem"
+                            fontSize="2.2rem"
                             style={{
-                              filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))',
+                              filter: 'drop-shadow(0 1px 2px rgba(0,0,0,0.15))',
                               transition: 'all 0.3s ease'
                             }}
                           >
@@ -697,14 +780,16 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
                           </text>
                           <text
                             x={210 + 110 * Math.cos((Math.PI / 180) * (angle + 360 / total / 2))}
-                            y={210 + 140 * Math.sin((Math.PI / 180) * (angle + 360 / total / 2))}
+                            y={210 + 120 * Math.sin((Math.PI / 180) * (angle + 360 / total / 2))}
                             textAnchor="middle"
-                            alignmentBaseline="middle"
-                            fontSize="1.4rem"
-                            fill="#111"
-                            fontWeight="bold"
+                            alignmentBaseline="hanging"
+                            fontSize="0.95rem"
+                            fill="#333"
+                            fontWeight="normal"
                             style={{
-                              textShadow: '0 1px 2px rgba(255,255,255,0.8)'
+                              textShadow: '0 1px 2px rgba(255,255,255,0.7)',
+                              fontFamily: 'Comic Neue, Fredoka One, cursive, sans-serif',
+                              letterSpacing: '0.01em'
                             }}
                           >
                             {food.name}
@@ -737,31 +822,82 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
         <div className="side-panel right-panel">
           <div className="ingredients-card">
             {mode === 'creativo' ? (
-              <>
-                <h2 className="ingredients-title creative">¡Creativo!</h2>
-                <p>Agrega ingredientes para llenar tu plato mágico.</p>
-                <div className="ingredients-list">
-                  {ingredientes.map((food) => (
-                    <div key={food.id} className="ingredient-card">
-                      <img src={food.image} alt={food.name} className="ingredient-img" />
-                      <span className="ingredient-name">{food.name}</span>
+              showRecipe ? (
+                // Carrusel de pasos de la receta generada
+                <>
+                  <h2 className="ingredients-title creative">¡Tu Receta Mágica!</h2>
+                  {recipeTitle && (
+                    <div className="recipe-title-carrusel">{recipeTitle}</div>
+                  )}
+                  <p>¡Aquí tienes una receta paso a paso!</p>
+                  {recipeSteps.length > 0 ? (
+                    <div className="recipe-carousel">
+                      <div className="recipe-step-img">
+                        {loadingImages ? (
+                          <div className="img-placeholder">
+                            <span role="img" aria-label="Cargando imagen" style={{fontSize: '2.5rem'}}>⏳</span>
+                          </div>
+                        ) : recipeSteps[currentStep]?.url ? (
+                          <img src={recipeSteps[currentStep].url} alt={recipeSteps[currentStep].texto} style={{width: '100%', height: '100%', objectFit: 'contain', borderRadius: '12px'}} />
+                        ) : (
+                          <div className="img-placeholder">
+                            <span role="img" aria-label="Imagen del paso" style={{fontSize: '3rem'}}>🖼️</span>
+                          </div>
+                        )}
+                      </div>
+                      <div className="recipe-step-text">
+                        {recipeSteps[currentStep].texto}
+                      </div>
+                      <div className="carousel-controls">
+                        <button className="carousel-btn" onClick={() => setCurrentStep(s => Math.max(0, s - 1))} disabled={currentStep === 0}>&lt;</button>
+                        <span className="carousel-index">Paso {currentStep + 1} de {recipeSteps.length}</span>
+                        <button className="carousel-btn" onClick={() => setCurrentStep(s => Math.min(recipeSteps.length - 1, s + 1))} disabled={currentStep === recipeSteps.length - 1}>&gt;</button>
+                      </div>
                     </div>
-                  ))}
-                </div>
-                <button className="ai-recipe-btn" onClick={handleGenerateRecipe} disabled={ingredientes.length === 0 || recipeLoading}>
-                  ¡Dame ideas!
-                </button>
-                {recipeResult && <div className="ai-recipe-result">{recipeResult}</div>}
-                {recipeError && <div className="ai-recipe-error">{recipeError}</div>}
-              </>
+                  ) : (
+                    <div className="ai-recipe-error">No se encontraron pasos en la receta.</div>
+                  )}
+                  <button className="ai-recipe-btn back-btn" onClick={handleBackToIngredients}>
+                    ← Volver a ingredientes
+                  </button>
+                  {recipeError && <div className="ai-recipe-error">{recipeError}</div>}
+                </>
+              ) : (
+                // Vista normal de ingredientes
+                <>
+                  <h2 className="ingredients-title creative">¡Creativo!</h2>
+                  <p>Agrega ingredientes para llenar tu plato mágico.</p>
+                  <div className="ingredients-list">
+                    {ingredientes.map((food) => {
+                      // Buscar el emoji en foods si no existe en food.image
+                      const foodData = food.image ? food : foods.find(f => f.id === food.id) || food;
+                      return (
+                        <div key={food.id} className="ingredient-card">
+                          <span className="ingredient-img">{foodData.image}</span>
+                          <span className="ingredient-name">{food.name}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <button className="ai-recipe-btn" onClick={handleGenerateRecipe} disabled={ingredientes.length === 0 || recipeLoading}>
+                    ¡Dame ideas!
+                  </button>
+                  {recipeError && <div className="ai-recipe-error">{recipeError}</div>}
+                </>
+              )
             ) : (
               <>
                 <h2 className="ingredients-title traditional">¡Tus ingredientes!</h2>
+                {selectedRecipe?.name && (
+                  <div className="traditional-recipe-title">
+                    <span>🍽️ <b>{selectedRecipe.name}</b></span>
+                  </div>
+                )}
                 <p>¡Mira qué cosas ricas tienes!</p>
                 <div className="ingredients-list">
                   {(selectedRecipe ? selectedRecipe.ingredients.map(id => foods.find(f => f.id === id)).filter(Boolean) as Food[] : []).map((food) => (
                     <div key={food.id} className="ingredient-card">
-                      <img src={food.image} alt={food.name} className="ingredient-img" />
+                      <span className="ingredient-img">{food.image}</span>
                       <span className="ingredient-name">{food.name}</span>
                     </div>
                   ))}
