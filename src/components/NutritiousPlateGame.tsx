@@ -3,6 +3,7 @@ import './NutritiousPlateGame.css';
 import { Food } from '../types';
 import { foods } from '../data/foods';
 import { useArduino } from '../hooks/useArduino';
+import PlateHealthPredictor from './PlateHealthPredictor';
 
 interface EcuadorianRecipe {
   name: string;
@@ -907,6 +908,16 @@ Responde SOLO con el JSON, sin explicaciones, sin texto antes o después, sin co
           </div>
         </div>
       </div>
+
+      {/* Predictor de Salud del Plato */}
+      {ingredientes.length > 0 && (
+        <div className="health-predictor-container">
+          <PlateHealthPredictor 
+            foods={ingredientes} 
+            className="health-predictor"
+          />
+        </div>
+      )}
     </div>
   );
 };

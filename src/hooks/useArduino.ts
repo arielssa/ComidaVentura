@@ -48,6 +48,15 @@ export const useArduino = (): ArduinoHookReturn => {
             const data = JSON.parse(event.data);
             console.log('📡 WebSocket message:', data);
             
+            // Log específico para alimentos agregados
+            if (data.type === 'FOOD_ADDED') {
+              console.log('🔍 Food added - server data:', {
+                foodInMessage: data.food,
+                dishFoods: data.dish.foods,
+                lastFood: data.dish.foods[data.dish.foods.length - 1]
+              });
+            }
+            
             switch (data.type) {
               case 'INITIAL_STATE':
               case 'DISH_RESET':
@@ -56,6 +65,13 @@ export const useArduino = (): ArduinoHookReturn => {
                 break;
               case 'FOOD_ADDED':
                 setDish(data.dish);
+                console.log('🔍 Dish updated in frontend:', data.dish.foods.map((f: any) => ({
+                  name: f.name,
+                  id: f.id,
+                  calories: f.calories,
+                  actualCalories: f.actualCalories,
+                  hasNutrition: !!f.nutrition
+                })));
                 break;
             }
           } catch (error) {

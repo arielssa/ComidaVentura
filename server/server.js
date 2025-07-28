@@ -3,6 +3,7 @@ const cors = require('cors');
 const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
 const WebSocket = require('ws');
+const axios = require('axios');
 
 const app = express();
 const PORT = 3001;
@@ -11,20 +12,275 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json());
 
-// Food data mapping (matching your Arduino code)
+// ML Service configuration
+const ML_SERVICE_URL = 'http://localhost:5000';
+
+// ML Service helper functions
+async function callMLService(endpoint, data = null, method = 'GET') {
+  try {
+    const config = {
+      method,
+      url: `${ML_SERVICE_URL}${endpoint}`,
+      timeout: 30000, // 30 segundos
+    };
+    
+    if (data && method !== 'GET') {
+      config.data = data;
+      config.headers = {
+        'Content-Type': 'application/json'
+      };
+    }
+    
+    const response = await axios(config);
+    return response.data;
+  } catch (error) {
+    console.error(`Error calling ML service ${endpoint}:`, error.message);
+    throw error;
+  }
+}
+
+async function checkMLServiceHealth() {
+  try {
+    const response = await callMLService('/health');
+    return response.status === 'healthy';
+  } catch (error) {
+    return false;
+  }
+}
+
+// Convert food data to ML format
+function convertFoodToMLFormat(food) {
+
+  // Función auxiliar para estimar sodio basado en el tipo de alimento
+  function estimateSodium(food) {
+    const category = food.category?.toLowerCase() || '';
+    const name = food.name?.toLowerCase() || '';
+    
+    // Alimentos procesados tienen más sodio
+    if (name.includes('frito') || name.includes('chips') || name.includes('embutido')) return 400;
+    if (category === 'snack') return 300;
+    if (category === 'processed') return 350;
+    // Carnes y pescados
+    if (category === 'protein') return 80;
+    // Vegetales y frutas
+    if (category === 'vegetable' || category === 'fruit') return 5;
+    // Granos y cereales
+    if (category === 'grain') return 10;
+    // Por defecto
+    return 50;
+  }
+  
+  // Función auxiliar para estimar colesterol
+  function estimateCholesterol(food) {
+    const category = food.category?.toLowerCase() || '';
+    const name = food.name?.toLowerCase() || '';
+    
+    // Productos de origen animal tienen colesterol
+    if (name.includes('pollo') || name.includes('chicken')) return 85;
+    if (name.includes('carne') || name.includes('beef')) return 90;
+    if (name.includes('pescado') || name.includes('salmon') || name.includes('fish')) return 60;
+    if (name.includes('huevo') || name.includes('egg')) return 186;
+    if (category === 'protein') return 70;
+    // Productos vegetales no tienen colesterol
+    return 0;
+  }
+  
+  // Función auxiliar para puntaje de vitaminas/minerales
+  function estimateVitaminScore(food) {
+    const category = food.category?.toLowerCase() || '';
+    const name = food.name?.toLowerCase() || '';
+    
+    // Frutas y vegetales tienen más vitaminas
+    if (category === 'fruit' || category === 'vegetable') return 8;
+    if (name.includes('brócoli') || name.includes('espinaca')) return 9;
+    // Proteínas animales tienen vitaminas B
+    if (category === 'protein') return 6;
+    // Granos integrales
+    if (category === 'grain') return 5;
+    // Alimentos procesados tienen menos
+    if (category === 'snack' || category === 'processed') return 2;
+    // Por defecto
+    return 4;
+  }
+
+  let baseData;
+  
+  console.log('🔍 Procesando alimento:', food.name, {
+    hasNutrition: !!food.nutrition,
+    hasActualCalories: !!food.actualCalories,
+    calories: food.calories,
+    actualCalories: food.actualCalories,
+    nutrition: food.nutrition
+  });
+
+  // Si el alimento tiene información nutricional completa, úsala
+  if (food.nutrition) {
+    console.log('✅ Usando datos nutrition:', food.nutrition);
+    baseData = {
+      calories: food.nutrition.calories || 0,
+      protein: food.nutrition.protein || 0,
+      carbs: food.nutrition.carbs || 0,
+      fat: food.nutrition.fat || 0,
+      fiber: food.nutrition.fiber || 0,
+      sugar: food.nutrition.sugar || 0
+    };
+  }
+  // Si solo tiene actualCalories (de Arduino), usar valores básicos
+  else if (food.actualCalories) {
+    console.log('⚠️ Solo actualCalories, usando valores básicos');
+    baseData = {
+      calories: food.actualCalories,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0
+    };
+  }
+  // Valores por defecto
+  else {
+    console.log('❌ Sin datos nutricionales, usando valores por defecto');
+    baseData = {
+      calories: food.calories || 0,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+      fiber: 0,
+      sugar: 0
+    };
+  }
+  
+  // Agregar las 3 características adicionales para completar las 9
+  return {
+    ...baseData,
+    sodium: estimateSodium(food),
+    cholesterol: estimateCholesterol(food),
+    vitaminScore: estimateVitaminScore(food)
+  };
+}
+
+// Food data mapping (matching your Arduino code) - Includes full nutrition data
 const foodMapping = {
-  "Salmon": { id: 'fish', name: 'Salmón', calories: 208, category: 'protein' },
-  "Chicken": { id: 'chicken', name: 'Pollo a la Plancha', calories: 165, category: 'protein' },
-  "Eggs": { id: 'eggs', name: 'Huevos', calories: 155, category: 'protein' },
-  "Broccoli": { id: 'broccoli', name: 'Brócoli', calories: 34, category: 'vegetable' },
-  "Carrot": { id: 'carrots', name: 'Zanahorias', calories: 41, category: 'vegetable' },
-  "Banana": { id: 'banana', name: 'Plátano', calories: 89, category: 'fruit' },
-  "Apple": { id: 'apple', name: 'Manzana', calories: 52, category: 'fruit' },
-  "Rice": { id: 'brown-rice', name: 'Arroz Integral', calories: 111, category: 'grain' },
-  "Bread": { id: 'white-bread', name: 'Pan Blanco', calories: 75, category: 'grain' },
-  "Cheese": { id: 'cheese', name: 'Queso', calories: 113, category: 'dairy' },
-  "Yogurt": { id: 'yogurt', name: 'Yogur Natural', calories: 59, category: 'dairy' },
-  "Fried potatoes": { id: 'chips', name: 'Papas Fritas', calories: 152, category: 'snack' }
+  "Salmon": { 
+    id: 'fish', 
+    name: 'Salmón', 
+    calories: 208, 
+    category: 'protein',
+    nutrition: { calories: 208, protein: 20, carbs: 0, fat: 13, fiber: 0, sugar: 0 },
+    healthScore: 5,
+    image: '🐟',
+    color: 'bg-blue-100'
+  },
+  "Chicken": { 
+    id: 'chicken', 
+    name: 'Pollo a la Plancha', 
+    calories: 165, 
+    category: 'protein',
+    nutrition: { calories: 165, protein: 31, carbs: 0, fat: 3.6, fiber: 0, sugar: 0 },
+    healthScore: 5,
+    image: '🍗',
+    color: 'bg-orange-100'
+  },
+  "Eggs": { 
+    id: 'eggs', 
+    name: 'Huevos', 
+    calories: 155, 
+    category: 'protein',
+    nutrition: { calories: 155, protein: 13, carbs: 1, fat: 11, fiber: 0, sugar: 1 },
+    healthScore: 4,
+    image: '🥚',
+    color: 'bg-yellow-100'
+  },
+  "Broccoli": { 
+    id: 'broccoli', 
+    name: 'Brócoli', 
+    calories: 34, 
+    category: 'vegetable',
+    nutrition: { calories: 34, protein: 3, carbs: 7, fat: 0.4, fiber: 2.6, sugar: 1.5 },
+    healthScore: 5,
+    image: '🥦',
+    color: 'bg-green-100'
+  },
+  "Carrot": { 
+    id: 'carrots', 
+    name: 'Zanahorias', 
+    calories: 41, 
+    category: 'vegetable',
+    nutrition: { calories: 41, protein: 1, carbs: 10, fat: 0.2, fiber: 2.8, sugar: 4.7 },
+    healthScore: 5,
+    image: '🥕',
+    color: 'bg-orange-100'
+  },
+  "Banana": { 
+    id: 'banana', 
+    name: 'Plátano', 
+    calories: 89, 
+    category: 'fruit',
+    nutrition: { calories: 89, protein: 1.1, carbs: 23, fat: 0.3, fiber: 2.6, sugar: 12 },
+    healthScore: 4,
+    image: '🍌',
+    color: 'bg-yellow-100'
+  },
+  "Apple": { 
+    id: 'apple', 
+    name: 'Manzana', 
+    calories: 52, 
+    category: 'fruit',
+    nutrition: { calories: 52, protein: 0.3, carbs: 14, fat: 0.2, fiber: 2.4, sugar: 10 },
+    healthScore: 5,
+    image: '🍎',
+    color: 'bg-red-100'
+  },
+  "Rice": { 
+    id: 'brown-rice', 
+    name: 'Arroz Integral', 
+    calories: 111, 
+    category: 'grain',
+    nutrition: { calories: 111, protein: 3, carbs: 23, fat: 0.9, fiber: 1.8, sugar: 0.4 },
+    healthScore: 4,
+    image: '🍚',
+    color: 'bg-amber-100'
+  },
+  "Bread": { 
+    id: 'white-bread', 
+    name: 'Pan Blanco', 
+    calories: 75, 
+    category: 'grain',
+    nutrition: { calories: 75, protein: 2.3, carbs: 14, fat: 1, fiber: 0.8, sugar: 1.2 },
+    healthScore: 2,
+    image: '🍞',
+    color: 'bg-orange-100'
+  },
+  "Cheese": { 
+    id: 'cheese', 
+    name: 'Queso', 
+    calories: 113, 
+    category: 'dairy',
+    nutrition: { calories: 113, protein: 7, carbs: 1, fat: 9, fiber: 0, sugar: 0.5 },
+    healthScore: 3,
+    image: '🧀',
+    color: 'bg-yellow-100'
+  },
+  "Yogurt": { 
+    id: 'yogurt', 
+    name: 'Yogur Natural', 
+    calories: 59, 
+    category: 'dairy',
+    nutrition: { calories: 59, protein: 10, carbs: 3.6, fat: 0.4, fiber: 0, sugar: 3.2 },
+    healthScore: 4,
+    image: '🥛',
+    color: 'bg-blue-100'
+  },
+  "Fried potatoes": { 
+    id: 'chips', 
+    name: 'Papas Fritas', 
+    calories: 152, 
+    category: 'snack',
+    nutrition: { calories: 152, protein: 2, carbs: 15, fat: 10, fiber: 1.4, sugar: 0.1 },
+    healthScore: 1,
+    image: '🍟',
+    color: 'bg-red-100'
+  }
 };
 
 // Current dish state
@@ -114,9 +370,18 @@ function parseArduinoData(data) {
             actualCalories: calories
           };
           
+          console.log('🔍 Arduino - foodInfo from mapping:', foodInfo);
+          console.log('🔍 Arduino - created foodItem:', foodItem);
+          
           currentDish.foods.push(foodItem);
           currentDish.totalCalories += calories;
           currentDish.timestamp = new Date();
+          
+          console.log('🔍 Arduino - current dish foods:', currentDish.foods.map(f => ({
+            name: f.name,
+            id: f.id,
+            hasNutrition: !!f.nutrition
+          })));
           
           broadcast({
             type: 'FOOD_ADDED',
@@ -136,6 +401,13 @@ function parseArduinoData(data) {
         const totalFromArduino = parseInt(match[1]);
         currentDish.totalCalories = totalFromArduino;
         
+        console.log('🔍 TOTAL_UPDATE - dish.foods antes de enviar:', currentDish.foods.map(f => ({
+          name: f.name,
+          id: f.id,
+          hasNutrition: !!f.nutrition,
+          nutrition: f.nutrition
+        })));
+        
         broadcast({
           type: 'TOTAL_UPDATE',
           totalCalories: totalFromArduino,
@@ -150,6 +422,167 @@ function parseArduinoData(data) {
 }
 
 // REST API Endpoints
+
+// ML Service Endpoints
+
+// Get ML service status
+app.get('/api/ml/status', async (req, res) => {
+  try {
+    const isHealthy = await checkMLServiceHealth();
+    if (isHealthy) {
+      const info = await callMLService('/model-info');
+      res.json({ 
+        status: 'healthy',
+        ml_service: info
+      });
+    } else {
+      res.json({ 
+        status: 'unhealthy',
+        message: 'ML service is not responding'
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ 
+      status: 'error',
+      error: error.message 
+    });
+  }
+});
+
+// Train ML models
+app.post('/api/ml/train', async (req, res) => {
+  try {
+    const result = await callMLService('/train', {}, 'POST');
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to start training',
+      details: error.message 
+    });
+  }
+});
+
+// Get training status
+app.get('/api/ml/training-status', async (req, res) => {
+  try {
+    const status = await callMLService('/training-status');
+    res.json(status);
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to get training status',
+      details: error.message 
+    });
+  }
+});
+
+// Predict dish health
+app.post('/api/ml/predict', async (req, res) => {
+  try {
+    console.log('🚨 /api/ml/predict LLAMADO desde frontend!');
+    const { foods, model_type = 'neural' } = req.body;
+    
+    console.log('🔍 Frontend enviado - foods:', foods.map(f => ({
+      calories: f.calories,
+      protein: f.protein,
+      hasNutrition: f.nutrition !== undefined,
+      originalKeys: Object.keys(f)
+    })));
+    
+    if (!foods || !Array.isArray(foods) || foods.length === 0) {
+      return res.status(400).json({ 
+        error: 'Foods array is required and cannot be empty' 
+      });
+    }
+    
+    // Los foods ya vienen procesados desde el frontend, NO necesitan convertFoodToMLFormat
+    console.log('⚠️ USANDO ALIMENTOS YA PROCESADOS DEL FRONTEND');
+    
+    // Call ML service directly with the processed foods from frontend
+    const prediction = await callMLService('/predict', {
+      foods: foods,  // Ya procesados por getNutritionData() en el frontend
+      model_type
+    }, 'POST');
+    
+    res.json({
+      ...prediction,
+      foods_analyzed: foods.length
+    });
+    
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to predict dish health',
+      details: error.message 
+    });
+  }
+});
+
+// Predict current dish health
+app.post('/api/ml/predict-current', async (req, res) => {
+  try {
+    console.log('🚨 /api/ml/predict-current LLAMADO!');
+    console.log('🚨 Request body:', req.body);
+    console.log('🚨 currentDish.foods:', currentDish.foods.map(f => ({
+      id: f.id,
+      name: f.name,
+      hasNutrition: !!f.nutrition
+    })));
+    
+    const { model_type = 'neural' } = req.body;
+    
+    if (!currentDish.foods || currentDish.foods.length === 0) {
+      return res.status(400).json({ 
+        error: 'No foods in current dish' 
+      });
+    }
+    
+    // Convert current dish foods to ML format with better nutrition mapping
+    const mlFoods = currentDish.foods.map(food => {
+      console.log('🔍 Processing food from currentDish:', { 
+        id: food.id, 
+        name: food.name, 
+        hasNutrition: !!food.nutrition 
+      });
+      
+      // Intentar encontrar la información nutricional completa en foodMapping
+      const fullFoodData = Object.values(foodMapping).find(mappedFood => 
+        mappedFood.id === food.id || mappedFood.name === food.name
+      );
+      
+      console.log('🔍 Found fullFoodData:', fullFoodData ? { 
+        id: fullFoodData.id, 
+        name: fullFoodData.name, 
+        hasNutrition: !!fullFoodData.nutrition 
+      } : null);
+      
+      if (fullFoodData && fullFoodData.nutrition) {
+        console.log('✅ Using fullFoodData with nutrition');
+        return convertFoodToMLFormat(fullFoodData);
+      }
+      
+      // Si no se encuentra, usar los datos disponibles del plato actual
+      console.log('❌ Using food from currentDish (fallback)');
+      return convertFoodToMLFormat(food);
+    });
+    
+    // Call ML service
+    const prediction = await callMLService('/predict', {
+      foods: mlFoods,
+      model_type
+    }, 'POST');
+    
+    res.json({
+      ...prediction,
+      dish: currentDish,
+      foods_analyzed: currentDish.foods.length
+    });
+    
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Failed to predict current dish health',
+      details: error.message 
+    });
+  }
+});
 
 // Get current dish
 app.get('/api/dish', (req, res) => {
@@ -227,13 +660,29 @@ wss.on('connection', (ws) => {
 });
 
 // Start server
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`🔌 WebSocket server running on ws://localhost:8080`);
   
+  // Check ML service status
+  console.log('🧠 Verificando estado del servicio ML...');
+  try {
+    const isHealthy = await checkMLServiceHealth();
+    if (isHealthy) {
+      console.log('✅ Servicio ML está funcionando');
+      const info = await callMLService('/model-info');
+      console.log(`📊 Modelos cargados: ${Object.values(info.models_loaded).filter(Boolean).length}/5`);
+    } else {
+      console.log('⚠️  Servicio ML no está disponible');
+      console.log('💡 Asegúrate de ejecutar: python ml_service/app.py');
+    }
+  } catch (error) {
+    console.log('❌ Error al conectar con el servicio ML:', error.message);
+  }
+  
   // Try to initialize serial connection with default port (Windows)
   console.log('🔍 Intentando conectar a Arduino en COM4...');
-  initializeSerial('COM4', 9600);
+  initializeSerial('COM6', 9600);
 });
 
 // Graceful shutdown

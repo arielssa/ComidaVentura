@@ -1801,3 +1801,384 @@
   max-width: 320px;
   display: inline-block;
 }
+
+/* Health Predictor Container */
+.health-predictor-container {
+  margin-top: 20px;
+  padding: 0 20px;
+  z-index: 10;
+  position: relative;
+  max-width: 1200px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* ML Prediction Panel Styles */
+.ml-prediction-container {
+  margin-top: 20px;
+  padding: 0 20px;
+  z-index: 10;
+  position: relative;
+}
+
+.ml-prediction-panel {
+  max-width: 1200px;
+  margin: 0 auto;
+  border: 2px solid #e1e5e9;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+}
+
+.ml-prediction-panel h3 {
+  color: #495057;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+}
+
+.ml-prediction-panel .bg-white {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+}
+
+.ml-prediction-panel button {
+  font-family: 'Comic Neue', cursive;
+  font-weight: 600;
+  transition: all 0.3s var(--bounce);
+}
+
+.ml-prediction-panel button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.ml-prediction-panel select {
+  font-family: 'Comic Neue', cursive;
+}
+
+.ml-prediction-panel .text-green-600 {
+  color: var(--primary-green);
+}
+
+.ml-prediction-panel .text-blue-600 {
+  color: var(--primary-blue);
+}
+
+.ml-prediction-panel .text-purple-600 {
+  color: var(--primary-purple);
+}
+
+.ml-prediction-panel .text-yellow-600 {
+  color: var(--secondary-yellow);
+}
+
+.ml-prediction-panel .text-red-600 {
+  color: var(--secondary-pink);
+}
+
+.ml-prediction-panel .bg-green-100 {
+  background-color: rgba(50, 215, 75, 0.1);
+  border: 1px solid rgba(50, 215, 75, 0.2);
+}
+
+.ml-prediction-panel .bg-blue-100 {
+  background-color: rgba(0, 122, 255, 0.1);
+  border: 1px solid rgba(0, 122, 255, 0.2);
+}
+
+.ml-prediction-panel .bg-purple-100 {
+  background-color: rgba(175, 82, 222, 0.1);
+  border: 1px solid rgba(175, 82, 222, 0.2);
+}
+
+.ml-prediction-panel .bg-yellow-100 {
+  background-color: rgba(255, 204, 2, 0.1);
+  border: 1px solid rgba(255, 204, 2, 0.2);
+}
+
+.ml-prediction-panel .bg-red-100 {
+  background-color: rgba(255, 45, 146, 0.1);
+  border: 1px solid rgba(255, 45, 146, 0.2);
+}
+
+/* Responsive adjustments for ML panel */
+@media (max-width: 768px) {
+  .ml-prediction-container {
+    padding: 0 10px;
+  }
+  
+  .ml-prediction-panel {
+    border-radius: 8px;
+    margin: 10px 0;
+  }
+  
+  .ml-prediction-panel h3 {
+    font-size: 1.3rem;
+  }
+}
+
+/* Plate Health Predictor Styles */
+.plate-health-predictor {
+  margin-top: 20px;
+  padding: 20px;
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  font-family: 'Comic Neue', cursive;
+}
+
+.prediction-button-container {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.predict-button {
+  background: linear-gradient(135deg, var(--primary-blue) 0%, var(--primary-purple) 100%);
+  color: white;
+  border: none;
+  border-radius: 25px;
+  padding: 16px 32px;
+  font-size: 1.3rem;
+  font-weight: 700;
+  font-family: 'Fredoka One', cursive;
+  cursor: pointer;
+  transition: all 0.3s var(--bounce);
+  box-shadow: 0 6px 20px rgba(0, 122, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  min-width: 280px;
+  margin: 0 auto;
+}
+
+.predict-button.active:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 10px 30px rgba(0, 122, 255, 0.4);
+  background: linear-gradient(135deg, #0056b3 0%, #8e44ad 100%);
+}
+
+.predict-button.disabled {
+  background: #cccccc;
+  color: #666666;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.predict-button .button-icon {
+  font-size: 1.5rem;
+  animation: pulse 2s infinite;
+}
+
+.predict-button .loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.service-warning {
+  background: rgba(255, 193, 7, 0.1);
+  border: 2px solid rgba(255, 193, 7, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  color: #856404;
+  font-weight: 600;
+}
+
+.error-message {
+  background: rgba(220, 53, 69, 0.1);
+  border: 2px solid rgba(220, 53, 69, 0.3);
+  border-radius: 12px;
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 15px;
+  color: #721c24;
+}
+
+.close-error {
+  background: none;
+  border: none;
+  color: #721c24;
+  cursor: pointer;
+  font-size: 1.2rem;
+  margin-left: auto;
+}
+
+.prediction-result {
+  background: rgba(248, 249, 250, 0.9);
+  border-radius: 16px;
+  padding: 20px;
+  margin-top: 20px;
+  border: 2px solid rgba(0, 0, 0, 0.05);
+}
+
+.result-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.result-header h4 {
+  margin: 0;
+  color: #495057;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.3rem;
+}
+
+.close-result {
+  background: none;
+  border: none;
+  font-size: 1.3rem;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.close-result:hover {
+  background: rgba(0, 0, 0, 0.1);
+  color: #495057;
+}
+
+.result-card {
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  border: 2px solid transparent;
+}
+
+.result-main {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.result-emoji {
+  font-size: 3rem;
+  animation: bounce-in 0.6s var(--bounce);
+}
+
+.result-text .classification {
+  font-size: 1.5rem;
+  font-weight: 700;
+  font-family: 'Fredoka One', cursive;
+  margin-bottom: 4px;
+}
+
+.result-text .confidence {
+  font-size: 1rem;
+  opacity: 0.8;
+  font-weight: 600;
+}
+
+.result-details {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.detail-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.9rem;
+  color: #6c757d;
+  font-weight: 600;
+}
+
+.detail-icon {
+  font-size: 1.1rem;
+}
+
+.recommendations {
+  margin-top: 16px;
+}
+
+.recommendation-card {
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: 12px;
+  padding: 16px;
+  border-left: 4px solid var(--primary-orange);
+}
+
+.recommendation-card h5 {
+  margin: 0 0 8px 0;
+  color: #495057;
+  font-family: 'Fredoka One', cursive;
+  font-size: 1.1rem;
+}
+
+.recommendation-card p {
+  margin: 0;
+  color: #6c757d;
+  font-weight: 500;
+  line-height: 1.4;
+}
+
+.empty-plate-message {
+  text-align: center;
+  padding: 40px 20px;
+  color: #6c757d;
+}
+
+.empty-plate-message .empty-icon {
+  font-size: 3rem;
+  display: block;
+  margin-bottom: 12px;
+  opacity: 0.6;
+}
+
+.empty-plate-message p {
+  font-size: 1.1rem;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .plate-health-predictor {
+    padding: 16px;
+    margin-top: 15px;
+  }
+  
+  .predict-button {
+    min-width: 240px;
+    font-size: 1.1rem;
+    padding: 14px 24px;
+  }
+  
+  .result-main {
+    flex-direction: column;
+    text-align: center;
+    gap: 12px;
+  }
+  
+  .result-details {
+    justify-content: center;
+  }
+  
+  .prediction-result {
+    padding: 16px;
+  }
+}
