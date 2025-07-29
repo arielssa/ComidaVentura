@@ -4,6 +4,8 @@ const { SerialPort } = require('serialport');
 const { ReadlineParser } = require('@serialport/parser-readline');
 const WebSocket = require('ws');
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = 3001;
@@ -658,6 +660,216 @@ wss.on('connection', (ws) => {
     console.log('🔌 WebSocket client disconnected');
   });
 });
+
+// Emotion files endpoints
+app.post('/api/save-emotion-files', async (req, res) => {
+  try {
+    const { emotions, timestamp } = req.body;
+    
+    // Crear directorio si no existe
+    const emotionResultsDir = path.join(__dirname, '..', 'FaceExpressionRecognition', 'emotion_results');
+    if (!fs.existsSync(emotionResultsDir)) {
+      fs.mkdirSync(emotionResultsDir, { recursive: true });
+    }
+    
+    const files = [];
+    
+    // 1. Guardar archivo JSON
+    const jsonPath = path.join(emotionResultsDir, `emotions_${timestamp}.json`);
+    fs.writeFileSync(jsonPath, JSON.stringify({ emotions, timestamp }, null, 2));
+    files.push(`emotions_${timestamp}.json`);
+    
+    // 2. Generar y guardar gráfica PNG
+    const chartPath = path.join(emotionResultsDir, `chart_${timestamp}.png`);
+    const chartData = await generateEmotionChartServer(emotions);
+    fs.writeFileSync(chartPath, chartData);
+    files.push(`chart_${timestamp}.png`);
+    
+    // 3. Generar y guardar reporte TXT
+    const reportPath = path.join(emotionResultsDir, `report_${timestamp}.txt`);
+    const reportContent = generateTextReportServer(emotions, timestamp);
+    fs.writeFileSync(reportPath, reportContent);
+    files.push(`report_${timestamp}.txt`);
+    
+    console.log(`✅ Archivos de emociones guardados: ${files.join(', ')}`);
+    
+    res.json({
+      success: true,
+      message: 'Archivos guardados exitosamente',
+      files: files,
+      path: emotionResultsDir
+    });
+    
+  } catch (error) {
+    console.error('❌ Error guardando archivos de emociones:', error);
+    res.status(500).json({
+      success: false,
+      error: error.message
+    });
+  }
+});
+
+// Función para generar gráfica en el servidor
+async function generateEmotionChartServer(emotions) {
+  const { createCanvas } = require('canvas');
+  
+  const canvas = createCanvas(800, 600);
+  const ctx = canvas.getContext('2d');
+  
+  // Configuración de la gráfica
+  const padding = 60;
+  const chartWidth = canvas.width - 2 * padding;
+  const chartHeight = canvas.height - 2 * padding;
+  
+  // Fondo blanco
+  ctx.fillStyle = 'white';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  
+  // Título
+  ctx.fillStyle = 'black';
+  ctx.font = 'bold 20px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('Evolución de Emociones - ComidaVentura', canvas.width / 2, 30);
+  
+  // Preparar datos
+  const emotionNames = ['neutral', 'happy', 'sad', 'angry', 'fearful', 'disgusted', 'surprised'];
+  const colors = ['#808080', '#FFD700', '#4169E1', '#DC143C', '#9932CC', '#228B22', '#FF8C00'];
+  
+  // Dibujar ejes
+  ctx.strokeStyle = 'black';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(padding, padding);
+  ctx.lineTo(padding, canvas.height - padding);
+  ctx.lineTo(canvas.width - padding, canvas.height - padding);
+  ctx.stroke();
+  
+  // Etiquetas de ejes
+  ctx.font = '12px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('Tiempo (muestras)', canvas.width / 2, canvas.height - 10);
+  
+  ctx.save();
+  ctx.translate(15, canvas.height / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText('Probabilidad', 0, 0);
+  ctx.restore();
+  
+  // Dibujar líneas de emociones
+  emotionNames.forEach((emotion, emotionIndex) => {
+    if (emotions[0][emotion] !== undefined) {
+      ctx.strokeStyle = colors[emotionIndex];
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      
+      emotions.forEach((sample, index) => {
+        const x = padding + (index / (emotions.length - 1)) * chartWidth;
+        const y = canvas.height - padding - (sample[emotion] * chartHeight);
+        
+        if (index === 0) {
+          ctx.moveTo(x, y);
+        } else {
+          ctx.lineTo(x, y);
+        }
+      });
+      
+      ctx.stroke();
+    }
+  });
+  
+  // Leyenda
+  const legendX = canvas.width - 150;
+  let legendY = 60;
+  ctx.font = '12px Arial';
+  ctx.textAlign = 'left';
+  
+  emotionNames.forEach((emotion, index) => {
+    if (emotions[0][emotion] !== undefined) {
+      ctx.fillStyle = colors[index];
+      ctx.fillRect(legendX, legendY, 15, 10);
+      
+      ctx.fillStyle = 'black';
+      ctx.fillText(emotion.charAt(0).toUpperCase() + emotion.slice(1), legendX + 20, legendY + 9);
+      
+      legendY += 20;
+    }
+  });
+  
+  return canvas.toBuffer('image/png');
+}
+
+// Función para generar reporte de texto en el servidor
+function generateTextReportServer(emotions, timestamp) {
+  let report = `REPORTE DE ANÁLISIS DE EMOCIONES - COMIDAVENTURA
+===============================================
+Fecha: ${new Date().toLocaleString()}
+Duración de la sesión: ${emotions.length} muestras
+Frecuencia de muestreo: ~10 Hz (1 muestra cada 100ms)
+
+ESTADÍSTICAS GENERALES:
+=======================
+`;
+
+  // Calcular estadísticas
+  const emotionNames = Object.keys(emotions[0]);
+  const stats = {};
+  
+  emotionNames.forEach(emotion => {
+    const values = emotions.map(sample => sample[emotion]);
+    const sum = values.reduce((a, b) => a + b, 0);
+    const avg = sum / values.length;
+    const max = Math.max(...values);
+    const min = Math.min(...values);
+    
+    stats[emotion] = { avg, max, min, sum };
+    
+    report += `${emotion.charAt(0).toUpperCase() + emotion.slice(1)}:
+  - Promedio: ${(avg * 100).toFixed(2)}%
+  - Máximo: ${(max * 100).toFixed(2)}%
+  - Mínimo: ${(min * 100).toFixed(2)}%
+  - Tiempo total: ${(sum / 10).toFixed(1)}s
+
+`;
+  });
+  
+  // Emoción dominante
+  const dominantEmotion = emotionNames.reduce((a, b) => stats[a].avg > stats[b].avg ? a : b);
+  report += `EMOCIÓN DOMINANTE: ${dominantEmotion.toUpperCase()} (${(stats[dominantEmotion].avg * 100).toFixed(2)}%)
+
+`;
+  
+  // Momentos de mayor intensidad emocional
+  report += `MOMENTOS DE ALTA INTENSIDAD EMOCIONAL:
+======================================
+`;
+  
+  emotions.forEach((sample, index) => {
+    const time = (index / 10).toFixed(1);
+    const maxEmotion = Object.keys(sample).reduce((a, b) => sample[a] > sample[b] ? a : b);
+    const intensity = sample[maxEmotion];
+    
+    if (intensity > 0.7) {
+      report += `${time}s: ${maxEmotion} (${(intensity * 100).toFixed(1)}%)
+`;
+    }
+  });
+  
+  report += `
+
+DATOS COMPLETOS (CSV):
+=====================
+Tiempo,${emotionNames.join(',')}
+`;
+  
+  emotions.forEach((sample, index) => {
+    const time = (index / 10).toFixed(1);
+    const values = emotionNames.map(emotion => sample[emotion].toFixed(4));
+    report += `${time},${values.join(',')}
+`;
+  });
+  
+  return report;
+}
 
 // Start server
 app.listen(PORT, async () => {

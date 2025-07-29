@@ -7,4 +7,12 @@ export default defineConfig({
   optimizeDeps: {
     exclude: ['lucide-react'],
   },
+  publicDir: 'public',
+  server: {
+    port: 5173,
+    fs: {
+      allow: ['..']
+    }
+  },
+  assetsInclude: ['**/*.json']
 });

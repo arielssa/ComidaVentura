@@ -1,12 +1,19 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, send_file
 from flask_cors import CORS
 from nutrition_model import NutritionModel
 import os
 import threading
 import time
+import json
+import subprocess
 
 app = Flask(__name__)
-CORS(app)
+
+# Configuración CORS más específica
+CORS(app, origins=['http://localhost:5173', 'http://127.0.0.1:5173'], 
+     methods=['GET', 'POST', 'OPTIONS'],
+     allow_headers=['Content-Type', 'Authorization'],
+     supports_credentials=True)
 
 # Instancia global del modelo
 nutrition_model = NutritionModel()
@@ -269,6 +276,73 @@ def load_models():
         return jsonify({
             'error': f'Error cargando modelos: {str(e)}'
         }), 500
+
+@app.route('/save-emotions', methods=['POST', 'OPTIONS'])
+def save_emotions():
+    """
+    Recibe un array de emociones, lo guarda como JSON y genera una gráfica en emotion_results
+    """
+    # Manejar peticiones OPTIONS (preflight)
+    if request.method == 'OPTIONS':
+        response = jsonify({'status': 'OK'})
+        response.headers.add('Access-Control-Allow-Origin', 'http://localhost:5173')
+        response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+        response.headers.add('Access-Control-Allow-Methods', 'POST, OPTIONS')
+        return response
+    
+    try:
+        print("=== RECIBIENDO PETICIÓN DE EMOCIONES ===")
+        data = request.get_json()
+        print(f"Datos recibidos: {data}")
+        
+        emotions = data.get('emotions')
+        if not emotions or not isinstance(emotions, list):
+            print("❌ Error: No se recibieron emociones válidas")
+            return jsonify({'error': 'No se recibieron emociones válidas'}), 400
+
+        print(f"✅ {len(emotions)} emociones recibidas correctamente")
+
+        # Crear carpeta de resultados si no existe
+        results_dir = os.path.join(os.path.dirname(__file__), '../FaceExpressionRecognition/emotion_results')
+        os.makedirs(results_dir, exist_ok=True)
+        print(f"📁 Directorio de resultados: {results_dir}")
+
+        # Guardar JSON con timestamp
+        import datetime
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        json_path = os.path.join(results_dir, f'emotions_{timestamp}.json')
+        with open(json_path, 'w', encoding='utf-8') as f:
+            json.dump(emotions, f, ensure_ascii=False)
+        print(f"✅ JSON guardado en: {json_path}")
+
+        # Llamar al script de graficado
+        output_path = os.path.join(results_dir, f'graph_{timestamp}.png')
+        print(f"📊 Generando gráfica en: {output_path}")
+        
+        try:
+            subprocess.run([
+                'python',
+                os.path.join(os.path.dirname(__file__), '../FaceExpressionRecognition/draw_expressions.py'),
+                json_path,
+                output_path
+            ], check=True)
+            print("✅ Gráfica generada exitosamente")
+        except subprocess.CalledProcessError as e:
+            print(f"❌ Error generando gráfica: {e}")
+            # Continúa aunque falle la gráfica
+
+        result = {
+            'message': 'Emociones y gráfica guardadas',
+            'json': json_path,
+            'graph': output_path,
+            'count': len(emotions),
+            'timestamp': timestamp
+        }
+        print(f"✅ Proceso completado: {result}")
+        return jsonify(result)
+    except Exception as e:
+        print(f"❌ Error general: {e}")
+        return jsonify({'error': str(e)}), 500
 
 @app.errorhandler(404)
 def not_found(error):
