@@ -1,10 +1,19 @@
 import NutritiousPlateGame from './components/NutritiousPlateGame';
+import { GameHeader } from './components/GameHeader';
+import { HelpModal } from './components/HelpModal';
+import { SplashScreen } from './components/SplashScreen';
 import { useArduino } from './hooks/useArduino';
 import { foods } from './data/foods';
 import { Food } from './types';
 import backgroundImage from './bg-comidaventura.png';
 import { useState, useRef, useEffect } from 'react';
+import { useUser } from '@clerk/clerk-react';
 
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+
+if (!PUBLISHABLE_KEY) {
+  throw new Error('Missing Publishable Key')
+}
 // Receta establecida (puedes cambiar los ids por los de la receta que quieras)
 const recetaEstablecida = [
   'chicken', // Pollo a la Plancha
@@ -15,16 +24,90 @@ const recetaEstablecida = [
 
 function App() {
   const { dish } = useArduino();
+  const { isSignedIn } = useUser();
   const [facialActive, setFacialActive] = useState(false);
   const [showCameraToast, setShowCameraToast] = useState(false);
   const [showSavedToast, setShowSavedToast] = useState(false);
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  
+  // Estados para el GameHeader
+  const [points, setPoints] = useState(0);
+  const [streak, setStreak] = useState(1);
+  const [platesCreated, setPlatesCreated] = useState(0);
+  const [gameMode, setGameMode] = useState<'creativo' | 'tradicional'>('creativo');
+  const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showSplashScreen, setShowSplashScreen] = useState(true);
 
   // Ingredientes leídos por NFC (del plato actual)
   const ingredientesActuales = dish.foods;
 
   // Alimentos de la receta (objetos Food)
   const recetaFoods = recetaEstablecida.map(id => foods.find(f => f.id === id)).filter(Boolean) as Food[];
+
+  // Actualizar estadísticas basadas en ingredientes (solo usuarios autenticados)
+  useEffect(() => {
+    if (isSignedIn) {
+      const multiplier = 1.5; // Bonus por ser Chef ComidaVentura
+      const newPoints = Math.floor(ingredientesActuales.length * 15 * multiplier);
+      setPoints(newPoints);
+      
+      if (ingredientesActuales.length >= 4) {
+        setPlatesCreated(prev => prev + 1);
+        setStreak(prev => prev + 1);
+      }
+    }
+  }, [ingredientesActuales.length, isSignedIn]);
+
+  // Escuchar mensajes del iframe
+  useEffect(() => {
+    const handleMessage = (event: MessageEvent) => {
+      console.log('Mensaje recibido del iframe:', event.data);
+      
+      if (event.data.type === 'EMOTION_COLLECTION_STARTED') {
+        console.log('✅ Confirmación: Recolección iniciada');
+      } else if (event.data.type === 'EMOTION_COLLECTION_STOPPED') {
+        console.log(`✅ Confirmación: Recolección detenida (${event.data.count} emociones)`);
+      } else if (event.data.type === 'EMOTION_SAVE_SUCCESS') {
+        console.log('✅ Confirmación: Emociones guardadas exitosamente');
+        setShowSavedToast(true);
+        setTimeout(() => setShowSavedToast(false), 3000);
+      } else if (event.data.type === 'EMOTION_SAVE_ERROR') {
+        console.error('❌ Error guardando emociones:', event.data.error);
+      }
+    };
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // Escuchar mensajes del iframe después del splash
+  useEffect(() => {
+    if (!showSplashScreen) {
+      const handleMessage = (event: MessageEvent) => {
+        console.log('Mensaje recibido del iframe:', event.data);
+        
+        if (event.data.type === 'EMOTION_COLLECTION_STARTED') {
+          console.log('✅ Confirmación: Recolección iniciada');
+        } else if (event.data.type === 'EMOTION_COLLECTION_STOPPED') {
+          console.log(`✅ Confirmación: Recolección detenida (${event.data.count} emociones)`);
+        } else if (event.data.type === 'EMOTION_SAVE_SUCCESS') {
+          console.log('✅ Confirmación: Emociones guardadas exitosamente');
+          setShowSavedToast(true);
+          setTimeout(() => setShowSavedToast(false), 3000);
+        } else if (event.data.type === 'EMOTION_SAVE_ERROR') {
+          console.error('❌ Error guardando emociones:', event.data.error);
+        }
+      };
+
+      window.addEventListener('message', handleMessage);
+      return () => window.removeEventListener('message', handleMessage);
+    }
+  }, [showSplashScreen]);
+
+  // Mostrar splash screen si no se ha completado el loading
+  if (showSplashScreen) {
+    return <SplashScreen onLoadingComplete={() => setShowSplashScreen(false)} />;
+  }
 
   // Funciones para iniciar/finalizar prueba
   const startFacialRecognition = () => {
@@ -40,7 +123,7 @@ function App() {
           console.log('Intentando comunicar con iframe...');
           
           // Método 1: Llamada directa a función
-          const win = iframe.contentWindow as any;
+          const win = iframe.contentWindow as Window & { startEmotionCollection?: () => void; FacialRecognition?: { start: () => void } };
           if (typeof win.startEmotionCollection === 'function') {
             win.startEmotionCollection();
             console.log('✅ Método 1: Función directa ejecutada');
@@ -84,7 +167,7 @@ function App() {
       try {
         const iframe = iframeRef.current;
         if (iframe && iframe.contentWindow) {
-          const win = iframe.contentWindow as any;
+          const win = iframe.contentWindow as Window & { stopEmotionCollectionAndSend?: () => void; FacialRecognition?: { stop: () => void } };
           
           // Método 1: Llamada directa
           if (typeof win.stopEmotionCollectionAndSend === 'function') {
@@ -122,28 +205,6 @@ function App() {
     setShowSavedToast(true);
     setTimeout(() => setShowSavedToast(false), 3000);
   };
-
-  // Escuchar mensajes del iframe
-  useEffect(() => {
-    const handleMessage = (event: MessageEvent) => {
-      console.log('Mensaje recibido del iframe:', event.data);
-      
-      if (event.data.type === 'EMOTION_COLLECTION_STARTED') {
-        console.log('✅ Confirmación: Recolección iniciada');
-      } else if (event.data.type === 'EMOTION_COLLECTION_STOPPED') {
-        console.log(`✅ Confirmación: Recolección detenida (${event.data.count} emociones)`);
-      } else if (event.data.type === 'EMOTION_SAVE_SUCCESS') {
-        console.log('✅ Confirmación: Emociones guardadas exitosamente');
-        setShowSavedToast(true);
-        setTimeout(() => setShowSavedToast(false), 3000);
-      } else if (event.data.type === 'EMOTION_SAVE_ERROR') {
-        console.error('❌ Error guardando emociones:', event.data.error);
-      }
-    };
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
 
   return (
     <div 
@@ -211,13 +272,33 @@ function App() {
         <div className="absolute top-20 left-1/2 w-10 h-10 bg-purple-300 rounded-full opacity-10 animate-ping"></div>
       </div>
       
+      {/* Game Header */}
+      <div className="relative z-10 w-full max-w-6xl mx-auto px-4">
+        <GameHeader 
+          points={points}
+          streak={streak}
+          platesCreated={platesCreated}
+          mode={gameMode}
+          onModeChange={setGameMode}
+
+          onHelpClick={() => setShowHelpModal(true)}
+        />
+      </div>
+      
       {/* Game content */}
-      <div className="relative z-10">
+      <div className="relative z-10 mt-4">
         <NutritiousPlateGame
           receta={recetaFoods}
           ingredientes={ingredientesActuales}
+          initialMode={gameMode}
         />
       </div>
+      
+      {/* Help Modal */}
+      <HelpModal 
+        isOpen={showHelpModal} 
+        onClose={() => setShowHelpModal(false)} 
+      />
     </div>
   );
 }
