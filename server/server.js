@@ -52,62 +52,7 @@ async function checkMLServiceHealth() {
 
 // Convert food data to ML format
 function convertFoodToMLFormat(food) {
-
-  // Función auxiliar para estimar sodio basado en el tipo de alimento
-  function estimateSodium(food) {
-    const category = food.category?.toLowerCase() || '';
-    const name = food.name?.toLowerCase() || '';
-    
-    // Alimentos procesados tienen más sodio
-    if (name.includes('frito') || name.includes('chips') || name.includes('embutido')) return 400;
-    if (category === 'snack') return 300;
-    if (category === 'processed') return 350;
-    // Carnes y pescados
-    if (category === 'protein') return 80;
-    // Vegetales y frutas
-    if (category === 'vegetable' || category === 'fruit') return 5;
-    // Granos y cereales
-    if (category === 'grain') return 10;
-    // Por defecto
-    return 50;
-  }
-  
-  // Función auxiliar para estimar colesterol
-  function estimateCholesterol(food) {
-    const category = food.category?.toLowerCase() || '';
-    const name = food.name?.toLowerCase() || '';
-    
-    // Productos de origen animal tienen colesterol
-    if (name.includes('pollo') || name.includes('chicken')) return 85;
-    if (name.includes('carne') || name.includes('beef')) return 90;
-    if (name.includes('pescado') || name.includes('salmon') || name.includes('fish')) return 60;
-    if (name.includes('huevo') || name.includes('egg')) return 186;
-    if (category === 'protein') return 70;
-    // Productos vegetales no tienen colesterol
-    return 0;
-  }
-  
-  // Función auxiliar para puntaje de vitaminas/minerales
-  function estimateVitaminScore(food) {
-    const category = food.category?.toLowerCase() || '';
-    const name = food.name?.toLowerCase() || '';
-    
-    // Frutas y vegetales tienen más vitaminas
-    if (category === 'fruit' || category === 'vegetable') return 8;
-    if (name.includes('brócoli') || name.includes('espinaca')) return 9;
-    // Proteínas animales tienen vitaminas B
-    if (category === 'protein') return 6;
-    // Granos integrales
-    if (category === 'grain') return 5;
-    // Alimentos procesados tienen menos
-    if (category === 'snack' || category === 'processed') return 2;
-    // Por defecto
-    return 4;
-  }
-
-  let baseData;
-  
-  console.log('🔍 Procesando alimento:', food.name, {
+  console.log('🔍 Convirtiendo alimento a formato ML:', food.name, {
     hasNutrition: !!food.nutrition,
     hasActualCalories: !!food.actualCalories,
     calories: food.calories,
@@ -115,53 +60,104 @@ function convertFoodToMLFormat(food) {
     nutrition: food.nutrition
   });
 
+  let mlData;
+  
   // Si el alimento tiene información nutricional completa, úsala
   if (food.nutrition) {
-    console.log('✅ Usando datos nutrition:', food.nutrition);
-    baseData = {
-      calories: food.nutrition.calories || 0,
-      protein: food.nutrition.protein || 0,
-      carbs: food.nutrition.carbs || 0,
-      fat: food.nutrition.fat || 0,
-      fiber: food.nutrition.fiber || 0,
-      sugar: food.nutrition.sugar || 0
+    console.log('✅ Usando datos nutrition completos:', food.nutrition);
+    mlData = {
+      Calorias: food.nutrition.calories || food.actualCalories || food.calories || 0,
+      Proteinas: food.nutrition.protein || 0,
+      Carbohidratos: food.nutrition.carbs || 0,
+      Grasas: food.nutrition.fat || 0,
+      Fibra: food.nutrition.fiber || 0,
+      Azucar: food.nutrition.sugar || 0
     };
   }
-  // Si solo tiene actualCalories (de Arduino), usar valores básicos
+  // Si solo tiene actualCalories (de Arduino), usar valores básicos estimados
   else if (food.actualCalories) {
-    console.log('⚠️ Solo actualCalories, usando valores básicos');
-    baseData = {
-      calories: food.actualCalories,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      fiber: 0,
-      sugar: 0
+    console.log('⚠️ Solo actualCalories disponible, estimando valores nutricionales');
+    // Estimaciones básicas basadas en el tipo de alimento
+    const category = food.category?.toLowerCase() || '';
+    const name = food.name?.toLowerCase() || '';
+    
+    const calories = food.actualCalories;
+    let protein = 0, carbs = 0, fat = 0, fiber = 0, sugar = 0;
+    
+    // Estimaciones por categoría
+    if (category === 'protein') {
+      protein = calories * 0.2; // ~20% proteína
+      fat = calories * 0.1; // ~10% grasa
+      carbs = calories * 0.05; // ~5% carbohidratos
+      fiber = 0;
+      sugar = calories * 0.01; // ~1% azúcar
+    } else if (category === 'vegetable') {
+      protein = calories * 0.08; // ~8% proteína
+      carbs = calories * 0.2; // ~20% carbohidratos
+      fat = calories * 0.01; // ~1% grasa
+      fiber = calories * 0.08; // ~8% fibra
+      sugar = calories * 0.1; // ~10% azúcar
+    } else if (category === 'fruit') {
+      protein = calories * 0.03; // ~3% proteína
+      carbs = calories * 0.25; // ~25% carbohidratos
+      fat = calories * 0.01; // ~1% grasa
+      fiber = calories * 0.06; // ~6% fibra
+      sugar = calories * 0.2; // ~20% azúcar
+    } else if (category === 'grain') {
+      protein = calories * 0.08; // ~8% proteína
+      carbs = calories * 0.25; // ~25% carbohidratos
+      fat = calories * 0.02; // ~2% grasa
+      fiber = calories * 0.04; // ~4% fibra
+      sugar = calories * 0.01; // ~1% azúcar
+    } else if (category === 'dairy') {
+      protein = calories * 0.15; // ~15% proteína
+      carbs = calories * 0.05; // ~5% carbohidratos
+      fat = calories * 0.15; // ~15% grasa
+      fiber = 0;
+      sugar = calories * 0.05; // ~5% azúcar
+    } else if (category === 'snack') {
+      protein = calories * 0.05; // ~5% proteína
+      carbs = calories * 0.15; // ~15% carbohidratos
+      fat = calories * 0.2; // ~20% grasa
+      fiber = calories * 0.02; // ~2% fibra
+      sugar = calories * 0.02; // ~2% azúcar
+    } else {
+      // Valores por defecto para categorías desconocidas
+      protein = calories * 0.1;
+      carbs = calories * 0.15;
+      fat = calories * 0.1;
+      fiber = calories * 0.03;
+      sugar = calories * 0.05;
+    }
+    
+    mlData = {
+      Calorias: calories,
+      Proteinas: Math.round(protein / 4), // Convertir calorías a gramos (4 cal/g proteína)
+      Carbohidratos: Math.round(carbs / 4), // 4 cal/g carbohidratos
+      Grasas: Math.round(fat / 9), // 9 cal/g grasa
+      Fibra: Math.round(fiber / 4), // Estimar fibra en gramos
+      Azucar: Math.round(sugar / 4) // Estimar azúcar en gramos
     };
   }
-  // Valores por defecto
+  // Valores por defecto si no hay datos nutricionales
   else {
-    console.log('❌ Sin datos nutricionales, usando valores por defecto');
-    baseData = {
-      calories: food.calories || 0,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-      fiber: 0,
-      sugar: 0
+    console.log('❌ Sin datos nutricionales, usando valores mínimos');
+    const calories = food.calories || 0;
+    mlData = {
+      Calorias: calories,
+      Proteinas: Math.max(1, Math.round(calories * 0.05 / 4)), // Mínimo 1g proteína
+      Carbohidratos: Math.max(1, Math.round(calories * 0.1 / 4)), // Mínimo 1g carbohidratos
+      Grasas: Math.max(1, Math.round(calories * 0.05 / 9)), // Mínimo 1g grasa
+      Fibra: 0,
+      Azucar: 0
     };
   }
   
-  // Agregar las 3 características adicionales para completar las 9
-  return {
-    ...baseData,
-    sodium: estimateSodium(food),
-    cholesterol: estimateCholesterol(food),
-    vitaminScore: estimateVitaminScore(food)
-  };
+  console.log('🔍 Datos ML generados:', mlData);
+  return mlData;
 }
 
-// Food data mapping (matching your Arduino code) - Includes full nutrition data
+// Food data mapping (matching your Arduino code) - Updated with precise nutrition data for ML
 const foodMapping = {
   "Salmon": { 
     id: 'fish', 

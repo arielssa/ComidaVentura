@@ -115,11 +115,21 @@ def predict_dish():
         
         # Verificar si los modelos están cargados
         if nutrition_model.neural_network is None:
+            print("🔄 Modelos no encontrados, iniciando entrenamiento automático...")
             if not nutrition_model.load_models():
-                return jsonify({
-                    'error': 'Los modelos no están entrenados. Por favor, entrena primero los modelos.',
-                    'suggestion': 'Usar el endpoint /train'
-                }), 400
+                # Si load_models retorna False, necesitamos entrenar
+                print("🔄 Entrenando modelos automáticamente...")
+                try:
+                    success = nutrition_model.train_all_models()
+                    if not success:
+                        return jsonify({
+                            'error': 'Error al entrenar los modelos automáticamente'
+                        }), 500
+                    print("✅ Modelos entrenados exitosamente")
+                except Exception as e:
+                    return jsonify({
+                        'error': f'Error durante el entrenamiento automático: {str(e)}'
+                    }), 500
         
         # Obtener tipo de modelo (por defecto neural)
         model_type = data.get('model_type', 'neural')
@@ -162,10 +172,21 @@ def predict_batch():
         
         # Verificar si los modelos están cargados
         if nutrition_model.neural_network is None:
+            print("🔄 Modelos no encontrados, iniciando entrenamiento automático...")
             if not nutrition_model.load_models():
-                return jsonify({
-                    'error': 'Los modelos no están entrenados. Por favor, entrena primero los modelos.'
-                }), 400
+                # Si load_models retorna False, necesitamos entrenar
+                print("🔄 Entrenando modelos automáticamente...")
+                try:
+                    success = nutrition_model.train_all_models()
+                    if not success:
+                        return jsonify({
+                            'error': 'Error al entrenar los modelos automáticamente'
+                        }), 500
+                    print("✅ Modelos entrenados exitosamente")
+                except Exception as e:
+                    return jsonify({
+                        'error': f'Error durante el entrenamiento automático: {str(e)}'
+                    }), 500
         
         dishes = data['dishes']
         model_type = data.get('model_type', 'neural')
@@ -376,7 +397,16 @@ if __name__ == '__main__':
             print("✅ Modelos cargados exitosamente")
         else:
             print("⚠️  No se encontraron modelos entrenados")
-            print("💡 Usa el endpoint /train para entrenar los modelos")
+            print("� Iniciando entrenamiento automático...")
+            try:
+                success = nutrition_model.train_all_models()
+                if success:
+                    print("✅ Modelos entrenados automáticamente")
+                else:
+                    print("❌ Error en el entrenamiento automático")
+            except Exception as train_error:
+                print(f"❌ Error durante el entrenamiento: {train_error}")
+                print("�💡 Usa el endpoint /train para entrenar manualmente")
     except Exception as e:
         print(f"⚠️  Error al cargar modelos: {e}")
         print("💡 Usa el endpoint /train para entrenar los modelos")
