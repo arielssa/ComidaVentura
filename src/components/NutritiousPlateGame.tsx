@@ -13,6 +13,7 @@ interface EcuadorianRecipe {
 interface NutritiousPlateGameProps {
   receta: Food[];
   ingredientes: Food[];
+  initialMode?: 'creativo' | 'tradicional';
 }
 
 // Mapeo de categorías a secciones del plato
@@ -56,53 +57,53 @@ const waitingMessages = [
   '¿Qué rico plato vamos a crear hoy? ¡Empecemos! 👨‍🍳',
 ];
 
-// Enhanced Progress Component
-const ProgressRing: React.FC<{ progress: number; total: number; mode: string }> = ({ progress, total, mode }) => {
-  const radius = 45;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDasharray = circumference;
-  const strokeDashoffset = circumference - (progress / total) * circumference;
-  
-  return (
-    <div className="progress-ring-container">
-      <svg className="progress-ring" width="120" height="120">
-        <circle
-          className="progress-ring-background"
-          cx="60"
-          cy="60"
-          r={radius}
-          fill="transparent"
-          stroke="rgba(255,255,255,0.3)"
-          strokeWidth="8"
-        />
-        <circle
-          className="progress-ring-fill"
-          cx="60"
-          cy="60"
-          r={radius}
-          fill="transparent"
-          stroke="url(#progressGradient)"
-          strokeWidth="8"
-          strokeDasharray={strokeDasharray}
-          strokeDashoffset={strokeDashoffset}
-          transform="rotate(-90 60 60)"
-        />
-        <defs>
-          <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-            <stop offset="0%" stopColor="#32d74b" />
-            <stop offset="50%" stopColor="#ffcc02" />
-            <stop offset="100%" stopColor="#ff9500" />
-          </linearGradient>
-        </defs>
-      </svg>
-      <div className="progress-content">
-        <div className="progress-text">
-          <span className="progress-numbers">{progress}/{total}</span>
-        </div>
-      </div>
-    </div>
-  );
-};
+// Enhanced Progress Component (temporarily unused)
+// const ProgressRing: React.FC<{ progress: number; total: number; mode: string }> = ({ progress, total }) => {
+//   const radius = 45;
+//   const circumference = 2 * Math.PI * radius;
+//   const strokeDasharray = circumference;
+//   const strokeDashoffset = circumference - (progress / total) * circumference;
+//   
+//   return (
+//     <div className="progress-ring-container">
+//       <svg className="progress-ring" width="120" height="120">
+//         <circle
+//           className="progress-ring-background"
+//           cx="60"
+//           cy="60"
+//           r={radius}
+//           fill="transparent"
+//           stroke="rgba(255,255,255,0.3)"
+//           strokeWidth="8"
+//         />
+//         <circle
+//           className="progress-ring-fill"
+//           cx="60"
+//           cy="60"
+//           r={radius}
+//           fill="transparent"
+//           stroke="url(#progressGradient)"
+//           strokeWidth="8"
+//           strokeDasharray={strokeDasharray}
+//           strokeDashoffset={strokeDashoffset}
+//           transform="rotate(-90 60 60)"
+//         />
+//         <defs>
+//           <linearGradient id="progressGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+//             <stop offset="0%" stopColor="#32d74b" />
+//             <stop offset="50%" stopColor="#ffcc02" />
+//             <stop offset="100%" stopColor="#ff9500" />
+//           </linearGradient>
+//         </defs>
+//       </svg>
+//       <div className="progress-content">
+//         <div className="progress-text">
+//           <span className="progress-numbers">{progress}/{total}</span>
+//         </div>
+//       </div>
+//     </div>
+//   );
+// };
 
 // Enhanced Empty Plate Component
 const EmptyPlate: React.FC<{ mode: string }> = ({ mode }) => {
@@ -283,18 +284,30 @@ const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/
 // --- Configuración para generación de imágenes con Gemini ---
 const GEMINI_IMAGE_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-pro-vision:generateContent?key=TU_API_KEY_AQUI'; // Cambia TU_API_KEY_AQUI por tu clave real
 
-const HOW_TO_PLAY = [
-  '🎮 ¿Cómo jugar?',
-  '📱 Escanea los ingredientes con las tarjetas NFC',
-  '🎨 En modo creativo: ¡Crea tu plato libremente!',
-  '🍽️ En modo tradicional: ¡Sigue la receta propuesta!',
-  '🏆 ¡Gana puntos y medallas por completar recetas!'
-];
+// HOW_TO_PLAY moved to header - keeping for potential future use
+// const HOW_TO_PLAY = [
+//   '🎮 ¿Cómo jugar?',
+//   '📱 Escanea los ingredientes con las tarjetas NFC', 
+//   '🎨 En modo creativo: ¡Crea tu plato libremente!',
+//   '🍽️ En modo tradicional: ¡Sigue la receta propuesta!',
+//   '🏆 ¡Gana puntos y medallas por completar recetas!'
+// ];
 
-const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingredientes }) => {
+const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingredientes, initialMode = 'creativo' }) => {
   const { resetDish } = useArduino();
   // --- Modo de juego ---
-  const [mode, setMode] = useState<'creativo' | 'tradicional'>('creativo');
+  const [mode, setMode] = useState<'creativo' | 'tradicional'>(initialMode);
+  
+  // Sincronizar modo con el prop inicial
+  useEffect(() => {
+    if (initialMode !== mode) {
+      setMode(initialMode);
+      if (initialMode === 'tradicional') {
+        setTradicionalPlaced([]);
+        setWrongIngredient(null);
+      }
+    }
+  }, [initialMode]);
   const [selectedRecipe, setSelectedRecipe] = useState<EcuadorianRecipe | null>(null);
   const [tradicionalPlaced, setTradicionalPlaced] = useState<string[]>([]);
   const [wrongIngredient, setWrongIngredient] = useState<string | null>(null);
@@ -467,7 +480,6 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
 
   // --- GEMINI API ---
   const [recipeLoading, setRecipeLoading] = useState(false);
-  const [recipeResult, setRecipeResult] = useState<string | null>(null);
   const [showRecipe, setShowRecipe] = useState(false);
   const [recipeSteps, setRecipeSteps] = useState<Array<{ texto: string; imagen: string; url?: string }>>([]);
   const [currentStep, setCurrentStep] = useState(0);
@@ -477,7 +489,6 @@ const NutritiousPlateGame: React.FC<NutritiousPlateGameProps> = ({ receta, ingre
   const handleGenerateRecipe = async () => {
     setRecipeLoading(true);
     setRecipeError(null);
-    setRecipeResult(null);
     setIsThinking(true);
     setRecipeSteps([]);
     setCurrentStep(0);
@@ -566,7 +577,6 @@ Responde SOLO con el JSON, sin explicaciones, sin texto antes o después, sin co
 
   const handleBackToIngredients = () => {
     setShowRecipe(false);
-    setRecipeResult(null);
     setRecipeError(null);
     setRecipeSteps([]);
     setCurrentStep(0);
@@ -580,7 +590,6 @@ Responde SOLO con el JSON, sin explicaciones, sin texto antes o después, sin co
     setWrongIngredient(null);
     setShowAchievement(null);
     setShowRecipe(false);
-    setRecipeResult(null);
     setRecipeError(null);
     setRecipeTitle(null);
     
@@ -593,29 +602,7 @@ Responde SOLO con el JSON, sin explicaciones, sin texto antes o después, sin co
     }
   };
 
-  const currentIngredientCount = mode === 'creativo' ? ingredientes.length : tradicionalPlaced.length;
-  const totalRequired = mode === 'creativo' ? Math.max(ingredientes.length, 1) : (selectedRecipe?.ingredients.length || 1);
-
   // --- Render ---
-  const [showHelp, setShowHelp] = useState(false);
-  const helpBtnRef = useRef<HTMLDivElement>(null);
-
-  // Cerrar el pop-up si se hace click fuera
-  useEffect(() => {
-    function handleClickOutside(event: MouseEvent) {
-      if (helpBtnRef.current && !helpBtnRef.current.contains(event.target as Node)) {
-        setShowHelp(false);
-      }
-    }
-    if (showHelp) {
-      document.addEventListener('mousedown', handleClickOutside);
-    } else {
-      document.removeEventListener('mousedown', handleClickOutside);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showHelp]);
 
   return (
     <div className="nutritious-plate-game-wrapper">
@@ -631,61 +618,7 @@ Responde SOLO con el JSON, sin explicaciones, sin texto antes o después, sin co
         />
       )}
 
-      {/* Header superior mejorado */}
-      <div className="game-header-bar">
-        <div className="game-mode-selector left-align">
-          <button 
-            className={mode === 'creativo' ? 'active' : ''} 
-            onClick={() => setMode('creativo')}
-            disabled={loadingRecipe}
-          >
-            🎨 Modo Creativo
-          </button>
-          <button 
-            className={mode === 'tradicional' ? 'active' : ''} 
-            onClick={() => { 
-              setMode('tradicional'); 
-              setTradicionalPlaced([]); 
-              setWrongIngredient(null); 
-            }}
-            disabled={loadingRecipe}
-          >
-            🍽️ Receta Tradicional
-          </button>
-        </div>
-        <div className="points-display">
-          <div className="points-container">
-            <span className="points-icon">🏆</span>
-            <div className="points-info">
-              <span className="points-label">Puntos</span>
-              <span className="points-value">
-                {mode === 'creativo' ? ingredientes.length * 10 : tradicionalPlaced.length * 20}
-              </span>
-            </div>
-            {(mode === 'tradicional' && tradicionalCompleted) || (mode === 'creativo' && ingredientes.length > 0) ? 
-              <span className="points-trophy">🎖️</span> : null
-            }
-          </div>
-        </div>
-        <div
-          className="help-btn-header"
-          ref={helpBtnRef}
-          onMouseEnter={() => setShowHelp(true)}
-          onMouseLeave={() => setShowHelp(false)}
-          onClick={() => setShowHelp((v) => !v)}
-          tabIndex={0}
-          style={{ position: 'relative', marginLeft: '18px', cursor: 'pointer' }}
-        >
-          <span role="img" aria-label="Ayuda" className="help-icon-header">❓</span>
-          {showHelp && (
-            <div className="help-popup">
-              {HOW_TO_PLAY.map((line, idx) => (
-                <div key={idx} className="help-line">{line}</div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+      {/* Header removido - ahora se maneja desde App.tsx */}
 
       {/* Layout principal reestructurado */}
       <div className="nutritious-plate-game main-layout">
